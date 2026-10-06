@@ -51,5 +51,37 @@
     { "name": "Белые 08", "category": "white", "type": "wallpaper", "preview": "wallpapers/white_08.jpg", "file": "wallpapers/white_08.jpg" },
     { "name": "Белые 09", "category": "white", "type": "wallpaper", "preview": "wallpapers/white_09.jpg", "file": "wallpapers/white_09.jpg" }
   ],
-  "plugins": []
+  "plugins": [
+    { "name": "AdBlock", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/AdBlock.plugin", "desc": "Блокировщик рекламы в Telegram" },
+    { "name": "CherryHeader", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/CherryHeader.plugin", "desc": "Делает заголовок канала по центру, как на iOS" },
+    { "name": "iPhonePeek", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/IPhonePeek.plugin", "desc": "Предпросмотр медиа как на iPhone" },
+    { "name": "TheLooker", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/TheLooker.plugin", "desc": "Позволяет подглядывать, что делает собеседник в других чатах" },
+    { "name": "AnimTou", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/animtou.plugin", "desc": "Анимация печатания/удаления текста" },
+    { "name": "Block Blast", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/block_blast.plugin", "desc": "Знаменитая игра прямо в Telegram" },
+    { "name": "Cashier", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/cashier.plugin", "desc": "Показывает, куда уходят звёзды: подарки, реакции, платные сообщения и подписки. Графики за месяц, год или всё время, история операций и баланс" },
+    { "name": "Emoji Downloader", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/emoji_downloader.plugin", "desc": "Скачивание эмодзи/стикера из превью долгим тапом. Пункты «Скачать» и «Copy ID» в контекстном меню. Авто-определение типа файла (стикер, видео-стикер, gif, tgs) и сохранение в нужную папку" },
+    { "name": "FemBoy Lyrics PP", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/femboy_lyricsPP_plugin.plugin", "desc": "Показывает текст песни и синхронизирует его со звучанием" },
+    { "name": "Google Photo Picker", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/google_photo_picker.plugin", "desc": "Пункт «Google Фото» в меню вложений. Поиск фото по тексту, доступ к облаку и личному пространству" },
+    { "name": "In-App Notifications", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/in-app-notifications.plugin", "desc": "Гибкие настройки локальных уведомлений Telegram внутри приложения" },
+    { "name": "Link Guard", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/link_guard.plugin", "desc": "Проверяет каждую ссылку на безопасность" },
+    { "name": "Local Time Shift", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/local_time_shift.plugin", "desc": "Локально сдвигает время сообщений, точное время последнего посещения и другие подписи времени в Telegram" },
+    { "name": "Long Quote Auto", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/long_quote_auto.plugin", "desc": "Сворачивает сообщение в цитату при наличии триггер-слов (крашлоги), чтобы не засорять чат длинным текстом" },
+    { "name": "Murin Translator", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/murintranslator (1).plugin", "desc": "Превращает обычный текст в муринский язык с -остью и мемами" },
+    { "name": "Pacman Archive", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/pacman_archive_chance.plugin", "desc": "Контролирует вероятность скрытого архива анимаций Pac-Man" },
+    { "name": "Pause Voices", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/pause_voices.plugin", "desc": "Позволяет ставить на паузу отправку голосовых и видео-сообщений вместо их безвозвратного удаления" },
+    { "name": "Plugins Command Scanner", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/plugins_command_scanner.plugin", "desc": "Выводит интерактивное всплывающее меню всех команд плагинов" },
+    { "name": "Protect Filter", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/protect_filter.plugin", "desc": "Автоблокировка собеседника при ключевых словах (спам, докс и т.д.)" },
+    { "name": "PST", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/pst.plugin", "desc": "Берёт весь текст в настройках и описаниях плагинов и переводит на выбранный язык" },
+    { "name": "reSwaga", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/reSwaga.plugin", "desc": "Отправка карточки/аудио текущего трека для музыкальных сервисов" },
+    { "name": "TBG", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/tbg.plugin", "desc": "Убирает градиент/блюр в чате" },
+    { "name": "Text Toolbar", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/text_toolbar.plugin", "desc": "Настраиваемая текстовая панель в поле ввода: форматирование, управление текстом, контроль над сообщением" },
+    { "name": "TG Streaks", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/tg-streaks.plugin", "desc": "Огонёк в Telegram — аналог серий из TikTok" },
+    { "name": "TikTok Frame", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/tiktokframe.plugin", "desc": "Добавляет рамку на несколько сообщений, как комментарии в TikTok" },
+    { "name": "Time Nickname", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/time_nickname.plugin", "desc": "Показывает текущее время в нике, чтобы собеседник знал твой часовой пояс" },
+    { "name": "Uname in Name", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/uname-in-name.plugin", "desc": "Отображение юзернейма в имени пользователя по заданному шаблону" },
+    { "name": "Undo Send", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/undo_send.plugin", "desc": "Задерживает отправку на несколько секунд и даёт отменить её одной кнопкой" },
+    { "name": "Voice Changer Pro", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/voice_changer_pro.plugin", "desc": "Меняет голос в голосовых или кружочках" },
+    { "name": "X Assist", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/x_assist.plugin", "desc": "Персональный AI в Telegram: умные ответы с веб-поиском, расшифровка голосовых и кружочков, поиск музыки, генерация картинок" },
+    { "name": "YeStyle", "client": "AyuGram + ExteraGram", "type": "plugin", "file": "plugins/yestyle (1).plugin", "desc": "Превращает стиль общения в фембойский/кавайный: заменяет слова на «милые» аналоги по словарю, добавляет приставки и суффиксы, каомодзи" }
+  ]
 }
