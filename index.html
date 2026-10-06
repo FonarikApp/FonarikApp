@@ -18,6 +18,7 @@
   --tx3:rgba(255,255,255,0.35);
   --blur:blur(40px) saturate(120%);
   --e:cubic-bezier(.22,1,.36,1);
+  --e-spring:cubic-bezier(.34,1.56,.64,1);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;font-family:-apple-system,'SF Pro Display','Segoe UI',Roboto,sans-serif}
 html,body{height:100%;overflow:hidden;background:#0a0a0a;color:var(--tx);overscroll-behavior:none}
@@ -29,157 +30,106 @@ linear-gradient(180deg,#141414,#050505);animation:wd 30s ease-in-out infinite al
 @keyframes wd{0%{transform:scale(1.05)}100%{transform:scale(1.1) translate(-1%,-.5%)}}
 #header{padding:14px 18px;display:flex;align-items:center;gap:12px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);z-index:10}
 #logo{font-size:19px;font-weight:900;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
-#logo .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ffd84d,#ff9500);box-shadow:0 0 12px rgba(255,216,77,0.6)}
+#logo .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ffd84d,#ff9500);box-shadow:0 0 12px rgba(255,216,77,0.6);animation:dotPulse 2s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{transform:scale(1);box-shadow:0 0 12px rgba(255,216,77,0.6)}50%{transform:scale(1.15);box-shadow:0 0 20px rgba(255,216,77,0.9)}}
 .badge{margin-left:auto;font-size:10px;font-weight:800;padding:5px 12px;border-radius:20px;background:var(--glass2);border:1px solid var(--bd2);color:var(--tx2);letter-spacing:1px}
 #searchBox{padding:10px 14px;background:rgba(0,0,0,0.3);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd)}
-#search{width:100%;padding:12px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--bd);color:var(--tx);font-size:14px;outline:none}
+#search{width:100%;padding:12px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--bd);color:var(--tx);font-size:14px;outline:none;transition:border-color .2s var(--e),background .2s}
+#search:focus{border-color:var(--bd2);background:var(--glass2)}
 #search::placeholder{color:var(--tx3)}
 #cats{display:flex;gap:6px;padding:10px 14px;overflow-x:auto;background:rgba(0,0,0,0.3);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
 #cats::-webkit-scrollbar{display:none}
-.cat{padding:8px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .12s var(--e)}
-.cat:active{transform:scale(.94)}
+.cat{padding:8px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .18s var(--e-spring),background .2s;position:relative;overflow:hidden}
+.cat:active{transform:scale(.9)}
 .cat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
 .cat .cnt{opacity:.6;margin-left:4px;font-size:11px}
 #subcats{display:none;gap:6px;padding:8px 14px;overflow-x:auto;background:rgba(0,0,0,0.2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
 #subcats.show{display:flex}
 #subcats::-webkit-scrollbar{display:none}
-.subcat{padding:7px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .12s var(--e)}
-.subcat:active{transform:scale(.94)}
+.subcat{padding:7px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .18s var(--e-spring),background .2s}
+.subcat:active{transform:scale(.9)}
 .subcat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
 .subcat .cnt{opacity:.6;margin-left:4px;font-size:10px}
 #content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:none}
 #content::-webkit-scrollbar{display:none}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .12s var(--e);animation:cIn .35s var(--e) backwards}
-@keyframes cIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.card:active{transform:scale(.97)}
+.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .2s var(--e-spring),border-color .2s,box-shadow .2s;animation:cIn .4s var(--e) backwards;position:relative;will-change:transform}
+@keyframes cIn{from{opacity:0;transform:translateY(14px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card:active{transform:scale(.94);border-color:var(--bd2);box-shadow:0 0 20px rgba(255,255,255,0.1)}
 .card .prev{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;position:relative}
-.card .prev img{width:100%;height:100%;object-fit:cover;display:block}
+.card .prev img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s var(--e)}
+.card:active .prev img{transform:scale(1.05)}
 .card .info{padding:10px 12px}
 .card .name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .sub{font-size:11px;color:var(--tx3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .empty{text-align:center;padding:60px 20px;color:var(--tx3)}
-.empty .big{font-size:64px;margin-bottom:14px}
+.empty .big{font-size:64px;margin-bottom:14px;animation:emptyFloat 3s ease-in-out infinite}
+@keyframes emptyFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .empty .ttl{font-size:16px;font-weight:700;color:var(--tx)}
 .empty .sub{font-size:13px;margin-top:8px}
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--glass2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2),0 12px 32px rgba(0,0,0,0.5);max-width:90%;text-align:center}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--glass2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s var(--e),transform .25s var(--e-spring);pointer-events:none;z-index:999;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2),0 12px 32px rgba(0,0,0,0.5);max-width:90%;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #modal{position:fixed;inset:0;z-index:500;display:none;align-items:flex-end;justify-content:center}
 #modal.show{display:flex}
-#mBg{position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-#mSheet{position:relative;width:100%;max-width:540px;background:rgba(20,20,20,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-bottom:none;border-radius:28px 28px 0 0;padding:20px 20px 30px;transform:translateY(100%);transition:transform .35s var(--e);max-height:85vh;overflow-y:auto}
+#mBg{position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;transition:opacity .3s var(--e)}
+#modal.show #mBg{opacity:1}
+#mSheet{position:relative;width:100%;max-width:540px;background:rgba(20,20,20,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-bottom:none;border-radius:28px 28px 0 0;padding:20px 20px 30px;transform:translateY(100%);transition:transform .4s var(--e-spring);max-height:85vh;overflow-y:auto;will-change:transform}
 #modal.show #mSheet{transform:translateY(0)}
 .handle{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,0.3);margin:0 auto 16px}
-.mTitle{font-size:20px;font-weight:800;margin-bottom:14px;text-align:center}
-.mPrev{width:100%;aspect-ratio:9/16;max-height:340px;border-radius:16px;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:16px;overflow:hidden}
+.mTitle{font-size:20px;font-weight:800;margin-bottom:14px;text-align:center;animation:fadeUp .4s var(--e) backwards;animation-delay:.1s}
+.mPrev{width:100%;aspect-ratio:9/16;max-height:340px;border-radius:16px;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:16px;overflow:hidden;animation:fadeUp .4s var(--e) backwards;animation-delay:.05s}
 .mPrev img{width:100%;height:100%;object-fit:contain}
-.mRow{display:flex;justify-content:space-between;padding:12px 14px;background:var(--glass);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:13px;font-weight:600}
+.mRow{display:flex;justify-content:space-between;padding:12px 14px;background:var(--glass);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:13px;font-weight:600;animation:fadeUp .4s var(--e) backwards;animation-delay:.15s}
 .mRow .v{color:var(--tx2)}
-.btn{width:100%;padding:16px;border-radius:14px;border:none;background:#fff;color:#0a0a0a;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;transition:transform .12s var(--e)}
-.btn:active{transform:scale(.97)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.btn{width:100%;padding:16px;border-radius:14px;border:none;background:#fff;color:#0a0a0a;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;transition:transform .15s var(--e-spring),box-shadow .2s;position:relative;overflow:hidden;animation:fadeUp .4s var(--e) backwards;animation-delay:.2s}
+.btn:active{transform:scale(.95)}
 .btn.ghost{background:var(--glass);color:var(--tx);border:1px solid var(--bd2)}
+.btn.ghost:active{background:var(--glass2)}
+
+/* Ripple */
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,0.4);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
 
 /* ============ ПРИВЕТСТВИЕ ============ */
-#splash{
-  position:fixed;
-  inset:0;
-  z-index:2000;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:30px;
-  text-align:center;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.10) 0, transparent 50%),
-    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.06) 0, transparent 50%),
-    linear-gradient(180deg, #141414, #050505);
-  transition: opacity .6s ease, transform .6s ease;
-}
-#splash.hide{
-  opacity:0;
-  transform:scale(1.05);
-  pointer-events:none;
-}
-.splash-icon{
-  font-size:84px;
-  margin-bottom:24px;
-  animation:splashFloat 2.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 30px rgba(255,216,77,0.5));
-}
-@keyframes splashFloat{
-  0%,100%{transform:translateY(0) rotate(-3deg)}
-  50%{transform:translateY(-12px) rotate(3deg)}
-}
-.splash-title{
-  font-size:24px;
-  font-weight:900;
-  letter-spacing:-.5px;
-  margin-bottom:14px;
-  line-height:1.3;
-  background:linear-gradient(135deg,#ffd84d,#ff9500);
-  -webkit-background-clip:text;
-  background-clip:text;
-  -webkit-text-fill-color:transparent;
-  opacity:0;
-  animation:fadeUp .6s ease .2s forwards;
-  max-width:340px;
-}
-.splash-text{
-  font-size:15px;
-  font-weight:500;
-  color:rgba(255,255,255,0.7);
-  line-height:1.6;
-  max-width:340px;
-  opacity:0;
-  animation:fadeUp .6s ease .4s forwards;
-}
-.splash-thanks{
-  margin-top:20px;
-  font-size:13px;
-  font-weight:700;
-  color:rgba(255,216,77,0.9);
-  opacity:0;
-  animation:fadeUp .6s ease .6s forwards;
-}
-@keyframes fadeUp{
-  from{opacity:0;transform:translateY(12px)}
-  to{opacity:1;transform:translateY(0)}
-}
-.splash-loader{
-  margin-top:36px;
-  width:48px;
-  height:4px;
-  border-radius:2px;
-  background:rgba(255,255,255,0.1);
-  overflow:hidden;
-  opacity:0;
-  animation:fadeUp .6s ease .8s forwards;
-}
-.splash-loader-fill{
-  height:100%;
-  width:0%;
-  background:rgba(255,255,255,0.85);
-  border-radius:2px;
-  animation:splashLoad 2s ease-out .8s forwards;
-}
-@keyframes splashLoad{
-  from{width:0%}
-  to{width:100%}
-}
+#splash{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,0.10) 0,transparent 50%),radial-gradient(circle at 70% 80%,rgba(255,255,255,0.06) 0,transparent 50%),linear-gradient(180deg,#141414,#050505);transition:opacity .6s ease,transform .6s ease}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+.splash-icon{font-size:84px;margin-bottom:24px;animation:splashFloat 2.5s ease-in-out infinite;filter:drop-shadow(0 0 30px rgba(255,216,77,0.5))}
+@keyframes splashFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)}}
+.splash-title{font-size:24px;font-weight:900;letter-spacing:-.5px;margin-bottom:14px;line-height:1.3;background:linear-gradient(135deg,#ffd84d,#ff9500);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:fadeUp .6s ease .2s forwards;max-width:340px}
+.splash-text{font-size:15px;font-weight:500;color:rgba(255,255,255,0.7);line-height:1.6;max-width:340px;opacity:0;animation:fadeUp .6s ease .4s forwards}
+.splash-thanks{margin-top:20px;font-size:13px;font-weight:700;color:rgba(255,216,77,0.9);opacity:0;animation:fadeUp .6s ease .6s forwards}
+.splash-loader{margin-top:36px;width:48px;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;opacity:0;animation:fadeUp .6s ease .8s forwards}
+.splash-loader-fill{height:100%;width:0%;background:rgba(255,255,255,0.85);border-radius:2px;animation:splashLoad 2s ease-out .8s forwards}
+@keyframes splashLoad{from{width:0%}to{width:100%}}
+
+/* ============ УСТАНОВКА ============ */
+#installSplash{position:fixed;inset:0;z-index:3000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;gap:16px;background:rgba(10,10,10,0.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);opacity:0;transition:opacity .3s var(--e)}
+#installSplash.show{display:flex;opacity:1}
+.install-icon{font-size:80px;animation:installPulse 1s ease-in-out infinite}
+@keyframes installPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.install-title{font-size:22px;font-weight:900}
+.install-text{font-size:15px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:320px}
+.install-hint{font-size:13px;color:rgba(255,216,77,0.9);margin-top:8px}
 </style>
 </head>
 <body>
 
 <div id="wall"></div>
 
-<!-- ПРИВЕТСТВИЕ -->
 <div id="splash">
   <div class="splash-icon">🟡</div>
   <div class="splash-title">Добро пожаловать в FonarikApp!</div>
   <div class="splash-text">Здесь ты найдёшь лучшие обои, плагины и темы для Telegram и HyperOS.</div>
   <div class="splash-thanks">💛 Спасибо, что выбрал именно наш проект</div>
   <div class="splash-loader"><div class="splash-loader-fill"></div></div>
+</div>
+
+<div id="installSplash">
+  <div class="install-icon">✅</div>
+  <div class="install-title">Плагин отправлен в бота</div>
+  <div class="install-text">Выйди из каталога и открой бота — там будет файл.<br>Тапни на него, чтобы установить.</div>
+  <div class="install-hint">Окно закроется через 2 секунды...</div>
 </div>
 
 <div id="header">
@@ -227,17 +177,17 @@ let SUB_CAT = "all";
 let QUERY = "";
 
 const COLORS = {
-  red:    { n: "🔴 Красные",   v: "red" },
-  black:  { n: "⚫ Чёрные",    v: "black" },
-  blue:   { n: "🔵 Синие",     v: "blue" },
-  green:  { n: "🟢 Зелёные",   v: "green" },
-  white:  { n: "⚪ Белые",     v: "white" },
-  purple: { n: "🟣 Фиолетовые", v: "purple" },
-  yellow: { n: "🟡 Жёлтые",    v: "yellow" },
-  orange: { n: "🟠 Оранжевые", v: "orange" },
-  gradient:{ n: "🌈 Градиент", v: "gradient" },
-  dark:   { n: "🌑 Тёмные",    v: "dark" },
-  light:  { n: "☀️ Светлые",   v: "light" },
+  red:    { n: "🔴 Красные" },
+  black:  { n: "⚫ Чёрные" },
+  blue:   { n: "🔵 Синие" },
+  green:  { n: "🟢 Зелёные" },
+  white:  { n: "⚪ Белые" },
+  purple: { n: "🟣 Фиолетовые" },
+  yellow: { n: "🟡 Жёлтые" },
+  orange: { n: "🟠 Оранжевые" },
+  gradient:{ n: "🌈 Градиент" },
+  dark:   { n: "🌑 Тёмные" },
+  light:  { n: "☀️ Светлые" },
 };
 
 function toast(m){
@@ -247,6 +197,28 @@ function toast(m){
   clearTimeout(window._tt);
   window._tt = setTimeout(()=>t.classList.remove("show"), 1600);
 }
+
+/* Ripple на кнопках */
+function addRipple(el, e){
+  const r = el.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  const span = document.createElement("span");
+  span.className = "ripple";
+  const size = Math.max(r.width, r.height);
+  span.style.width = span.style.height = size + "px";
+  span.style.left = (x - size/2) + "px";
+  span.style.top = (y - size/2) + "px";
+  el.appendChild(span);
+  setTimeout(()=>span.remove(), 600);
+}
+
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest(".btn, .cat, .subcat, .card");
+  if (el && el.classList.contains("btn")) {
+    addRipple(el, e);
+  }
+});
 
 function renderCats(){
   const cats = [
@@ -338,7 +310,7 @@ function renderList(){
   content.innerHTML = `<div class="grid">${items.map((it, i) => {
     const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
     const prev = it.preview ? `<img src="${it.preview}" loading="lazy" onerror="this.style.display='none'">` : ico;
-    return `<div class="card" data-i="${i}" style="animation-delay:${i*30}ms">
+    return `<div class="card" data-i="${i}" style="animation-delay:${Math.min(i*25, 400)}ms">
       <div class="prev">${prev}</div>
       <div class="info">
         <div class="name">${it.name || "Без названия"}</div>
@@ -356,17 +328,24 @@ function openItem(it){
   const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
   const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
   const catName = COLORS[it.category]?.n || it.category || "";
+  const isPlugin = it.type === "plugin";
+
   $("#mContent").innerHTML = `
     <div class="mPrev">${prev}</div>
     <div class="mTitle">${it.name || "Без названия"}</div>
     ${it.author ? `<div class="mRow"><span>Автор</span><span class="v">${it.author}</span></div>` : ""}
     ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
     ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
-    ${it.size ? `<div class="mRow"><span>Размер</span><span class="v">${it.size}</span></div>` : ""}
     ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
-    <button class="btn" id="dl">📥 Скачать</button>
+    ${isPlugin ? `<button class="btn" id="install">📥 Установить через бота</button>` : ""}
+    <button class="btn ghost" id="dl">💾 Скачать напрямую</button>
     <button class="btn ghost" id="close">Закрыть</button>
   `;
+
+  if (isPlugin) {
+    $("#install").onclick = () => installViaBot(it);
+  }
+
   $("#dl").onclick = () => {
     if (it.file) {
       window.open(it.file, "_blank");
@@ -375,8 +354,43 @@ function openItem(it){
       toast("Файл не указан");
     }
   };
+
   $("#close").onclick = () => $("#modal").classList.remove("show");
   $("#modal").classList.add("show");
+}
+
+function installViaBot(it){
+  if (!it.file) { toast("Файл не указан"); return; }
+
+  const payload = {
+    action: "install",
+    file: it.file,
+    name: it.name || "Файл",
+    type: it.type || "plugin"
+  };
+
+  if (window.Telegram && window.Telegram.WebApp) {
+    try {
+      window.Telegram.WebApp.sendData(JSON.stringify(payload));
+    } catch(e) {
+      toast("Ошибка отправки: " + e.message);
+      return;
+    }
+
+    $("#modal").classList.remove("show");
+
+    const sp = document.getElementById("installSplash");
+    sp.classList.add("show");
+
+    setTimeout(()=>{
+      sp.classList.remove("show");
+      setTimeout(()=>{
+        try { window.Telegram.WebApp.close(); } catch(e) {}
+      }, 300);
+    }, 2000);
+  } else {
+    toast("Открой через Telegram");
+  }
 }
 
 $("#mBg").onclick = () => $("#modal").classList.remove("show");
@@ -407,7 +421,6 @@ async function loadData(){
   }
 }
 
-/* ============ ПРИВЕТСТВИЕ ============ */
 (function initSplash(){
   const splash = document.getElementById("splash");
   if (!splash) return;
