@@ -1,0 +1,1428 @@
+import os
+import struct
+import array
+import audioop
+import traceback
+import math
+import time
+import random
+import itertools
+import json
+import tempfile
+import threading
+from fractions import Fraction
+from typing import Any, List
+
+from base_plugin import BasePlugin, MenuItemData, MenuItemType, MethodHook
+from hook_utils import find_class
+from android_utils import run_on_ui_thread, log
+from client_utils import get_last_fragment
+from ui.bulletin import BulletinHelper
+from ui.settings import Header, Selector, Switch, Divider, Text
+from java import jclass, dynamic_proxy, jarray
+
+__id__ = "voice_changer_pro"
+__name__ = "Voice Changer Pro"
+__description__ = "Смена голоса в голосовых: 25+ голосов, режим «Аноним», подстройка, очистка звука и настройки для чатов"
+__author__ = "@uqawo"
+__version__ = "2.1.1"
+__icon__ = "ToxicDuck/34"
+__app_version__ = ">=12.5.1"
+__sdk_version__ = ">=1.4.0"
+
+TAG = "[VoiceChanger]"
+NATIVE_SR = 48000
+SAMPLE_WIDTH = 2
+DSP_RATES = (16000, 24000, 0)  # 0 = родная частота
+
+# ─────────────────────────────── ЭФФЕКТЫ ───────────────────────────────
+
+(
+    EFFECT_NONE, EFFECT_CHIPMUNK, EFFECT_DEEP, EFFECT_ROBOT, EFFECT_ECHO,
+    EFFECT_REVERSE, EFFECT_DEMON, EFFECT_CUSTOM, EFFECT_ANON, EFFECT_ANON_MAX,
+    EFFECT_DALEK, EFFECT_ALIEN, EFFECT_RADIO, EFFECT_MEGAPHONE, EFFECT_MONSTER,
+    EFFECT_KID, EFFECT_OLD, EFFECT_WATER, EFFECT_GHOST, EFFECT_CIPHER,
+    EFFECT_DRUNK, EFFECT_BITS, EFFECT_RANDOM, EFFECT_CHOIR, EFFECT_SPACE,
+    EFFECT_GLITCH, EFFECT_GOBLIN,
+) = range(27)
+
+# id: (иконка, название, описание, параметры)
+# Параметры:
+#   pitch, speed         — высота / скорость (1.0 = без изменений)
+#   layers               — [(pitch, gain)] доп. голоса поверх основного
+#   ring (Гц, глубина)   — кольцевая модуляция (робот/далек)
+#   trem (Гц, глубина)   — тремоло
+#   vib (Гц, мс, база_мс, микс) — вибрато / хорус
+#   hp, lp, lp_poles     — фильтры (Гц)
+#   crush (Гц, бит)      — 8-бит
+#   ulaw                 — «телефонное» сжатие
+#   drive                — перегруз
+#   echo (мс, feedback), reverb (микс, размер), noise
+#   reverse, scramble    — реверс / перемешивание кусков
+EFFECTS = {
+    EFFECT_NONE:      ("🔇", "Выкл", "Без обработки", {}),
+    EFFECT_CHIPMUNK:  ("🐿️", "Бурундук", "Высокий голос", {"pitch": 1.45}),
+    EFFECT_DEEP:      ("👹", "Низкий", "Глубокий голос", {"pitch": 0.72}),
+    EFFECT_ROBOT:     ("🤖", "Робот", "Металлический голос",
+                       {"ring": (60, 0.65), "echo": (12, 0.55)}),
+    EFFECT_ECHO:      ("🏔️", "Эхо", "Пещера", {"echo": (220, 0.4)}),
+    EFFECT_REVERSE:   ("⏪", "Реверс", "Задом наперёд", {"reverse": True}),
+    EFFECT_DEMON:     ("💀", "Демон", "Жуткий низкий голос",
+                       {"pitch": 0.6, "speed": 0.95, "layers": [(0.48, 0.55)],
+                        "reverb": (0.35, 1.0), "drive": 1.4}),
+    EFFECT_CUSTOM:    ("🎛️", "Свой", "Ручные настройки", {}),
+    EFFECT_ANON:      ("🕶️", "Аноним", "Маскировка личности", {}),
+    EFFECT_ANON_MAX:  ("🥷", "Аноним+", "Максимальная маскировка", {}),
+    EFFECT_DALEK:     ("👾", "Далек", "Злой киборг",
+                       {"pitch": 0.85, "ring": (38, 1.0), "drive": 1.6, "echo": (9, 0.5)}),
+    EFFECT_ALIEN:     ("👽", "Пришелец", "Инопланетный голос",
+                       {"pitch": 1.22, "vib": (9.0, 1.5, 1.5, 1.0),
+                        "ring": (140, 0.3), "echo": (45, 0.35)}),
+    EFFECT_RADIO:     ("📻", "Рация", "Радиопомехи",
+                       {"hp": 350, "lp": 2800, "ulaw": True, "drive": 1.6, "noise": 0.012}),
+    EFFECT_MEGAPHONE: ("📢", "Мегафон", "Громкоговоритель",
+                       {"hp": 500, "lp": 3200, "drive": 3.0, "echo": (70, 0.3), "noise": 0.004}),
+    EFFECT_MONSTER:   ("🧌", "Монстр", "Рычащий гигант",
+                       {"pitch": 0.55, "drive": 1.8, "lp": 3500, "reverb": (0.3, 1.4)}),
+    EFFECT_KID:       ("🧒", "Ребёнок", "Детский голосок",
+                       {"pitch": 1.28, "vib": (6.2, 0.35, 0.35, 1.0)}),
+    EFFECT_OLD:       ("👴", "Старик", "Дрожащий голос",
+                       {"pitch": 0.88, "trem": (5.5, 0.5), "vib": (4.3, 0.5, 0.5, 1.0), "lp": 3200}),
+    EFFECT_WATER:     ("🌊", "Под водой", "Булькающий звук",
+                       {"lp": 900, "lp_poles": 2, "vib": (2.2, 3.0, 3.0, 1.0), "echo": (60, 0.4)}),
+    EFFECT_GHOST:     ("👻", "Призрак", "Эхо и дрожь",
+                       {"pitch": 0.9, "hp": 200, "trem": (6.0, 0.55),
+                        "echo": (190, 0.5), "reverb": (0.5, 2.0)}),
+    EFFECT_CIPHER:    ("🔐", "Шифр", "Речь не разобрать",
+                       {"pitch": 0.85, "scramble": True, "lp": 3600}),
+    EFFECT_DRUNK:     ("🥴", "Пьяный", "Плывущий голос",
+                       {"pitch": 0.93, "speed": 0.85, "vib": (0.9, 14.0, 14.0, 1.0)}),
+    EFFECT_BITS:      ("🎮", "8-бит", "Как в старой приставке",
+                       {"crush": (4000, 6), "drive": 1.2}),
+    EFFECT_RANDOM:    ("🎲", "Случайный", "Новый голос для каждого сообщения", {}),
+    EFFECT_CHOIR:     ("🎶", "Хор", "Несколько голосов сразу",
+                       {"layers": [(0.79, 0.7), (1.26, 0.6)], "vib": (0.9, 3.0, 12.0, 0.5),
+                        "reverb": (0.3, 1.2)}),
+    EFFECT_SPACE:     ("🚀", "Космос", "Голос из космоса",
+                       {"pitch": 0.92, "echo": (330, 0.45), "reverb": (0.5, 2.5),
+                        "lp": 4200, "trem": (0.5, 0.25)}),
+    EFFECT_GLITCH:    ("📟", "Глитч", "Заедание и помехи",
+                       {"glitch": True, "crush": (8000, 10)}),
+    EFFECT_GOBLIN:    ("🧟", "Гоблин", "Хриплый и злой",
+                       {"pitch": 0.78, "ring": (70, 0.25), "drive": 2.2, "hp": 250, "lp": 3800}),
+}
+
+# Из чего выбирает «Случайный» (без реверса и шифра — их не разобрать)
+RANDOM_POOL = [EFFECT_CHIPMUNK, EFFECT_DEEP, EFFECT_ROBOT, EFFECT_ECHO, EFFECT_DEMON,
+               EFFECT_ANON, EFFECT_ANON_MAX, EFFECT_DALEK, EFFECT_ALIEN, EFFECT_RADIO,
+               EFFECT_MEGAPHONE, EFFECT_MONSTER, EFFECT_KID, EFFECT_OLD, EFFECT_WATER,
+               EFFECT_GHOST, EFFECT_DRUNK, EFFECT_BITS, EFFECT_CHOIR, EFFECT_SPACE,
+               EFFECT_GLITCH, EFFECT_GOBLIN]
+
+EFFECT_ITEMS = [f"{EFFECTS[i][0]} {EFFECTS[i][1]} — {EFFECTS[i][2]}" for i in range(len(EFFECTS))]
+
+PITCH_ITEMS = ["0.5x", "0.6x", "0.7x", "0.8x", "0.9x", "1.0x", "1.1x", "1.2x", "1.3x",
+               "1.4x", "1.5x", "1.6x", "1.7x", "1.8x", "1.9x", "2.0x"]
+PITCH_VALUES = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+SPEED_ITEMS = PITCH_ITEMS
+SPEED_VALUES = PITCH_VALUES
+DELAY_ITEMS = ["Выкл", "50 мс", "100 мс", "150 мс", "200 мс", "250 мс", "300 мс", "400 мс", "500 мс"]
+DELAY_VALUES = [0, 50, 100, 150, 200, 250, 300, 400, 500]
+FEEDBACK_ITEMS = ["Выкл", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%"]
+FEEDBACK_VALUES = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+REVERB_ITEMS = FEEDBACK_ITEMS
+REVERB_VALUES = FEEDBACK_VALUES
+ROBOT_ITEMS = ["Выкл", "30 Гц", "40 Гц", "50 Гц", "60 Гц", "80 Гц", "100 Гц", "120 Гц", "150 Гц"]
+ROBOT_VALUES = [0.0, 30.0, 40.0, 50.0, 60.0, 80.0, 100.0, 120.0, 150.0]
+VIB_ITEMS = ["Выкл", "Слабое", "Среднее", "Сильное"]
+VIB_VALUES = [0.0, 0.3, 0.8, 2.0]
+QUALITY_ITEMS = ["Быстро (16 кГц)", "Стандарт (24 кГц)", "Максимум (48 кГц)"]
+ANON_DIR_ITEMS = ["Случайно", "Ниже (басовитый)", "Выше (тонкий)"]
+SCOPE_ITEMS = ["Везде", "Только личные чаты", "Только группы и каналы"]
+SHIFT_ITEMS = [("%+d пт" % i) if i else "0" for i in range(-12, 13)]
+SHIFT_DEFAULT = 12
+XSPEED_ITEMS = ["0.75x", "0.9x", "1.0x", "1.1x", "1.25x", "1.5x", "1.75x", "2.0x"]
+XSPEED_VALUES = [0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
+VOLUME_ITEMS = ["-6 дБ", "-3 дБ", "0 дБ", "+3 дБ", "+6 дБ", "+9 дБ"]
+VOLUME_VALUES = [-6, -3, 0, 3, 6, 9]
+TONE_ITEMS = ["Выкл", "Тёплый", "Яркий", "Телефон"]
+XECHO_ITEMS = ["Выкл", "Лёгкое", "Сильное"]
+XECHO_VALUES = [None, (120, 0.25), (240, 0.45)]
+XREVERB_ITEMS = ["Выкл", "Комната", "Зал", "Пещера"]
+XREVERB_VALUES = [None, (0.25, 0.8), (0.4, 1.6), (0.55, 2.6)]
+XNOISE_ITEMS = ["Выкл", "Лёгкий", "Средний", "Сильный"]
+XNOISE_VALUES = [0.0, 0.004, 0.01, 0.025]
+GATE_ITEMS = ["Выкл", "Слабое", "Среднее", "Сильное"]
+
+
+def _anon_spec(strong, direction, randomize, rng):
+    """Параметры режима «Аноним». Каждый раз немного разные, чтобы
+    сообщения нельзя было связать между собой по одинаковому «тембру»."""
+    if direction == 1:
+        down = True
+    elif direction == 2:
+        down = False
+    else:
+        down = (rng.random() < 0.5) if randomize else True
+
+    def j(a, b):
+        return rng.uniform(a, b) if randomize else (a + b) / 2.0
+
+    if strong:
+        pitch = j(0.58, 0.68) if down else j(1.38, 1.52)
+    else:
+        pitch = j(0.68, 0.80) if down else j(1.26, 1.38)
+
+    spec = {
+        "pitch": pitch,
+        "speed": j(0.97, 1.04),
+        "hp": j(130, 200),
+        "lp": j(3400, 4200),
+        "noise": 0.004,
+    }
+    d = j(0.5, 0.9)
+    spec["vib"] = (j(4.5, 6.5), d, d, 1.0)
+    spec["ring"] = (j(90, 150), j(0.10, 0.18))
+    if strong:
+        d = j(0.9, 1.4)
+        spec["vib"] = (j(5.5, 8.0), d, d, 1.0)
+        spec["ring"] = (j(110, 170), j(0.20, 0.30))
+        spec["layers"] = [(pitch * j(1.05, 1.09), 0.35)]
+        spec["ulaw"] = True
+        spec["hp"] = j(180, 240)
+        spec["lp"] = j(3000, 3600)
+        spec["reverb"] = (0.12, 0.6)
+        spec["noise"] = 0.008
+    return spec
+
+
+def _custom_spec(get):
+    spec = {
+        "pitch": PITCH_VALUES[int(get("c_pitch", 5))],
+        "speed": SPEED_VALUES[int(get("c_speed", 5))],
+    }
+    delay = DELAY_VALUES[int(get("c_delay", 0))]
+    fb = FEEDBACK_VALUES[int(get("c_feedback", 0))]
+    if delay > 0 and fb > 0:
+        spec["echo"] = (delay, fb)
+    rev = REVERB_VALUES[int(get("c_reverb", 0))]
+    if rev > 0:
+        spec["reverb"] = (rev, 1.0)
+    robot = ROBOT_VALUES[int(get("c_robot", 0))]
+    if robot > 0:
+        spec["ring"] = (robot, 0.65)
+    vib = VIB_VALUES[int(get("c_vib", 0))]
+    if vib > 0:
+        spec["vib"] = (5.5, vib, vib, 1.0)
+    if get("c_radio", False):
+        spec.update({"hp": 350, "lp": 2800, "ulaw": True, "noise": 0.008})
+    return spec
+
+
+def _idx(get, key, default, size):
+    try:
+        v = int(get(key, default))
+    except Exception:
+        v = default
+    return v if 0 <= v < size else default
+
+
+def _apply_overlays(spec, get):
+    """Настройки «поверх любого голоса»: сдвиг высоты, скорость, тембр, эхо, шум, громкость."""
+    spec = dict(spec)
+    st = _idx(get, "x_shift", SHIFT_DEFAULT, len(SHIFT_ITEMS)) - 12
+    if st:
+        mult = 2.0 ** (st / 12.0)
+        spec["pitch"] = min(2.6, max(0.35, spec.get("pitch", 1.0) * mult))
+        if spec.get("layers"):
+            spec["layers"] = [(min(2.6, max(0.35, p * mult)), g) for p, g in spec["layers"]]
+    xs = XSPEED_VALUES[_idx(get, "x_speed", 2, len(XSPEED_VALUES))]
+    if xs != 1.0:
+        spec["speed"] = min(2.5, max(0.5, spec.get("speed", 1.0) * xs))
+    tone = _idx(get, "x_tone", 0, len(TONE_ITEMS))
+    if tone:
+        spec["tone"] = tone
+    e = XECHO_VALUES[_idx(get, "x_echo", 0, len(XECHO_VALUES))]
+    if e:
+        spec["echo"] = e
+    r = XREVERB_VALUES[_idx(get, "x_reverb", 0, len(XREVERB_VALUES))]
+    if r:
+        spec["reverb"] = r
+    n = XNOISE_VALUES[_idx(get, "x_noise", 0, len(XNOISE_VALUES))]
+    if n:
+        spec["noise"] = n
+    vol = VOLUME_VALUES[_idx(get, "x_volume", 2, len(VOLUME_VALUES))]
+    if vol:
+        spec["gain_db"] = vol
+    if get("x_fade", True):
+        spec["fade"] = True
+    return spec
+
+
+# ──────────────────────────── DSP (чистый Python) ────────────────────────────
+# Все функции работают с bytes: моно, int16, native endian.
+
+def _resample(pcm, in_sr, out_sr):
+    if in_sr == out_sr or not pcm:
+        return pcm
+    if in_sr > out_sr and in_sr % out_sr == 0:
+        k = in_sr // out_sr
+        a = array.array('h')
+        a.frombytes(pcm[: len(pcm) // 2 * 2])
+        cols = [a[i::k] for i in range(k)]
+        return array.array('h', [sum(t) // k for t in zip(*cols)]).tobytes()
+    g = math.gcd(in_sr, out_sr)
+    return audioop.ratecv(pcm, SAMPLE_WIDTH, 1, in_sr // g, out_sr // g, None)[0]
+
+
+def _wsola(pcm, sr, alpha, step=None):
+    """Растяжение времени в alpha раз с сохранением высоты (WSOLA)."""
+    n0 = len(pcm) // 2
+    if n0 == 0 or abs(alpha - 1.0) < 0.004:
+        return pcm
+    N = max(64, int(sr * 0.03) // 2 * 2)
+    Hs = N // 2
+    tol = max(8, int(sr * 0.006))
+    if step is None:
+        step = 2 if n0 < sr * 60 else 4
+        if sr > 24000:
+            step += 1
+    if n0 < 3 * N:
+        pcm = pcm + bytes(2 * (3 * N - n0))
+    n = len(pcm) // 2
+    x = array.array('h')
+    x.frombytes(pcm)
+    win = [0.5 - 0.5 * math.cos(2.0 * math.pi * i / N) for i in range(N)]
+    out_len = int(n0 * alpha)
+    Ha = Hs / alpha
+    K = out_len // Hs + 2
+    out = [0.0] * (K * Hs + N)
+    rms = audioop.rms
+    findfactor = audioop.findfactor
+    hi_lim = n - N
+    prev = 0
+    for k in range(K):
+        c = int(k * Ha + 0.5)
+        if c > hi_lim:
+            c = hi_lim
+        best = c
+        if k > 0:
+            t0 = prev + Hs
+            if t0 <= hi_lim:
+                target = pcm[2 * t0: 2 * (t0 + N)]
+                rt = rms(target, 2)
+                if rt > 20:
+                    lo = max(0, c - tol)
+                    hi = min(hi_lim, c + tol)
+                    bc = -2.0
+                    for cand in range(lo, hi + 1, step):
+                        seg = pcm[2 * cand: 2 * (cand + N)]
+                        ra = rms(seg, 2)
+                        if ra:
+                            corr = findfactor(seg, target) * rt / ra
+                            if corr > bc:
+                                bc = corr
+                                best = cand
+        frame = x[best: best + N]
+        o = k * Hs
+        out[o: o + N] = [s + f * w for s, f, w in zip(out[o: o + N], frame, win)]
+        prev = best
+    res = out[:out_len]
+    return array.array(
+        'h', [32767 if v > 32767 else (-32768 if v < -32768 else int(v)) for v in res]
+    ).tobytes()
+
+
+def _pitch_time(pcm, sr, pitch, speed):
+    """Смена высоты (pitch>1 выше) и скорости (speed>1 быстрее)."""
+    alpha = pitch / speed
+    if abs(alpha - 1.0) >= 0.004:
+        pcm = _wsola(pcm, sr, alpha)
+    if abs(pitch - 1.0) >= 0.004:
+        fr = Fraction(pitch).limit_denominator(200)
+        pcm = audioop.ratecv(pcm, SAMPLE_WIDTH, 1, fr.numerator, fr.denominator, None)[0]
+    return pcm
+
+
+def _amp_mod(pcm, sr, rate, lo, hi):
+    """Амплитудная модуляция: множитель качается между lo и hi."""
+    period = max(2, int(round(sr / rate)))
+    mid = (hi + lo) / 2.0
+    amp = (hi - lo) / 2.0
+    table = [mid + amp * math.sin(2.0 * math.pi * i / period) for i in range(period)]
+    x = array.array('h')
+    x.frombytes(pcm)
+    return array.array('h', [int(a * b) for a, b in zip(x, itertools.cycle(table))]).tobytes()
+
+
+def _mod_delay(pcm, sr, rate, depth_ms, base_ms, mix):
+    """Линия задержки с модуляцией: вибрато (mix=1) или хорус/флэнжер."""
+    x = array.array('h')
+    x.frombytes(pcm)
+    n = len(x)
+    if n < 8:
+        return pcm
+    depth = sr * depth_ms / 1000.0
+    base = max(sr * base_ms / 1000.0, depth)
+    w = 2.0 * math.pi * rate / sr
+    sin = math.sin
+    dry = 1.0 - mix
+    last = n - 1
+    out = array.array('h')
+    ap = out.append
+    for i in range(n):
+        p = i - (base + depth * sin(w * i))
+        if p < 0.0:
+            p = 0.0
+        j = int(p)
+        if j >= last:
+            y = x[last]
+        else:
+            y = x[j] + (x[j + 1] - x[j]) * (p - j)
+        v = int(dry * x[i] + mix * y)
+        ap(32767 if v > 32767 else (-32768 if v < -32768 else v))
+    return out.tobytes()
+
+
+def _lowpass(pcm, sr, fc, poles=1):
+    fc = min(fc, sr * 0.45)
+    a = 1.0 - math.exp(-2.0 * math.pi * fc / sr)
+    x = array.array('h')
+    x.frombytes(pcm)
+    for _ in range(max(1, poles)):
+        y = 0.0
+        out = array.array('h')
+        ap = out.append
+        for v in x:
+            y += a * (v - y)
+            ap(int(y))
+        x = out
+    return x.tobytes()
+
+
+def _highpass(pcm, sr, fc):
+    a = 1.0 - math.exp(-2.0 * math.pi * fc / sr)
+    x = array.array('h')
+    x.frombytes(pcm)
+    lp = 0.0
+    out = array.array('h')
+    ap = out.append
+    for v in x:
+        lp += a * (v - lp)
+        o = int(v - lp)
+        ap(32767 if o > 32767 else (-32768 if o < -32768 else o))
+    return out.tobytes()
+
+
+def _bitcrush(pcm, sr, target_hz, bits):
+    x = array.array('h')
+    x.frombytes(pcm)
+    n = len(x)
+    hold = max(1, int(round(sr / float(target_hz))))
+    if hold > 1:
+        y = array.array('h', bytes(2 * n))
+        src = x[::hold]
+        for k in range(hold):
+            y[k::hold] = src[: len(range(k, n, hold))]
+        x = y
+    if bits < 16:
+        mask = -(1 << (16 - bits))
+        x = array.array('h', [v & mask for v in x])
+    return x.tobytes()
+
+
+def _add_noise(pcm, level):
+    noise = audioop.mul(os.urandom(len(pcm)), SAMPLE_WIDTH, level)
+    return audioop.add(pcm, noise, SAMPLE_WIDTH)
+
+
+def _multitap(pcm, sr, taps, dry=1.0):
+    """Сумма задержанных копий: эхо и реверберация на скорости C (audioop)."""
+    if not taps:
+        return pcm
+    maxd = max(int(sr * d / 1000.0) for d, _ in taps)
+    total = len(pcm) + 2 * maxd
+    acc = audioop.mul(pcm + bytes(total - len(pcm)), SAMPLE_WIDTH, dry)
+    for d_ms, g in taps:
+        d = int(sr * d_ms / 1000.0) * 2
+        sh = bytes(d) + pcm
+        sh += bytes(total - len(sh))
+        acc = audioop.add(acc, audioop.mul(sh, SAMPLE_WIDTH, g), SAMPLE_WIDTH)
+    return acc
+
+
+def _echo(pcm, sr, delay_ms, fb):
+    taps = []
+    g = fb
+    k = 1
+    while g >= 0.04 and k <= 14:
+        taps.append((delay_ms * k, g))
+        g *= fb
+        k += 1
+    return _multitap(pcm, sr, taps)
+
+
+_REVERB_TAPS = [(19, 0.55), (29, -0.5), (41, 0.45), (53, -0.4), (67, 0.36), (83, -0.32),
+                (101, 0.28), (127, -0.24), (151, 0.2), (181, -0.17), (211, 0.14),
+                (251, -0.11), (293, 0.09), (347, -0.07)]
+
+
+def _reverb(pcm, sr, mix, size):
+    taps = [(d * size, g * mix * 0.8) for d, g in _REVERB_TAPS]
+    return _multitap(pcm, sr, taps, dry=1.0 - 0.4 * mix)
+
+
+def _scramble(pcm, sr, rng):
+    """Режем речь на куски по ~100 мс, разворачиваем каждый и местами меняем соседей."""
+    n = len(pcm)
+    blocks = []
+    pos = 0
+    fade = max(8, int(sr * 0.004))
+    while pos < n:
+        b = int(sr * rng.uniform(0.07, 0.13)) * 2
+        blk = array.array('h')
+        blk.frombytes(audioop.reverse(pcm[pos: pos + b], SAMPLE_WIDTH))
+        m = len(blk)
+        f = min(fade, m // 2)
+        for i in range(f):
+            g = i / float(f)
+            blk[i] = int(blk[i] * g)
+            blk[m - 1 - i] = int(blk[m - 1 - i] * g)
+        blocks.append(blk.tobytes())
+        pos += b
+    for i in range(0, len(blocks) - 1, 2):
+        if rng.random() < 0.5:
+            blocks[i], blocks[i + 1] = blocks[i + 1], blocks[i]
+    return b"".join(blocks)
+
+
+def _match_level(pcm, ref_rms):
+    r = audioop.rms(pcm, SAMPLE_WIDTH)
+    pk = audioop.max(pcm, SAMPLE_WIDTH)
+    if r <= 0 or ref_rms <= 0:
+        return pcm
+    g = ref_rms / float(r)
+    if pk * g > 31000:
+        g = 31000.0 / pk
+    g = max(0.25, min(g, 8.0))
+    if 0.97 < g < 1.03:
+        return pcm
+    return audioop.mul(pcm, SAMPLE_WIDTH, g)
+
+
+def _fade(pcm, sr, ms=25):
+    x = array.array('h')
+    x.frombytes(pcm)
+    n = len(x)
+    f = min(int(sr * ms / 1000.0), n // 2)
+    for i in range(f):
+        g = i / float(f)
+        x[i] = int(x[i] * g)
+        x[n - 1 - i] = int(x[n - 1 - i] * g)
+    return x.tobytes()
+
+
+def _bright(pcm, sr):
+    lp = _lowpass(pcm, sr, 1800)
+    hf = audioop.add(pcm, audioop.mul(lp, SAMPLE_WIDTH, -1.0), SAMPLE_WIDTH)
+    return audioop.add(pcm, audioop.mul(hf, SAMPLE_WIDTH, 1.2), SAMPLE_WIDTH)
+
+
+def _glitch(pcm, sr, rng):
+    """Случайные заедания, обрывы и развороты коротких кусков."""
+    out = []
+    pos = 0
+    n = len(pcm)
+    while pos < n:
+        b = int(sr * rng.uniform(0.04, 0.12)) * 2
+        blk = pcm[pos: pos + b]
+        pos += b
+        r = rng.random()
+        if r < 0.13:
+            out.extend([blk] * rng.randint(2, 4))
+        elif r < 0.18:
+            out.append(bytes(len(blk)))
+        elif r < 0.24:
+            out.append(audioop.reverse(blk, SAMPLE_WIDTH))
+        else:
+            out.append(blk)
+    return b"".join(out)
+
+
+def _chunk_levels(pcm, sr):
+    C = max(16, int(sr * 0.02))
+    cnt = (len(pcm) // 2) // C
+    rms = audioop.rms
+    return C, cnt, [rms(pcm[i * C * 2:(i + 1) * C * 2], SAMPLE_WIDTH) for i in range(cnt)]
+
+
+def _gate(pcm, sr, level):
+    """Подавление фона: тихие куски (между словами) приглушаются. level 1..3."""
+    C, cnt, r = _chunk_levels(pcm, sr)
+    if cnt < 6:
+        return pcm
+    floor = sorted(r)[int(cnt * 0.15)]
+    thr = max(floor * (2.0, 3.0, 4.5)[level - 1], 40)
+    fgain = (0.4, 0.2, 0.07)[level - 1]
+    opened = [max(r[max(0, i - 2): i + 3]) > thr for i in range(cnt)]
+    out = []
+    gp = 1.0
+    for i in range(cnt):
+        chunk = pcm[i * C * 2:(i + 1) * C * 2]
+        g = 1.0 if opened[i] else fgain
+        if g == gp:
+            out.append(chunk if g == 1.0 else audioop.mul(chunk, SAMPLE_WIDTH, g))
+        else:
+            seg = array.array('h')
+            seg.frombytes(chunk)
+            d = (g - gp) / C
+            out.append(array.array('h', [int(v * (gp + d * k)) for k, v in enumerate(seg)]).tobytes())
+        gp = g
+    rem = pcm[cnt * C * 2:]
+    out.append(rem if gp == 1.0 else audioop.mul(rem, SAMPLE_WIDTH, gp))
+    return b"".join(out)
+
+
+def _trim_silence(pcm, sr):
+    """Обрезает тишину в начале и конце (оставляя 100 мс запаса)."""
+    C, cnt, r = _chunk_levels(pcm, sr)
+    if cnt < 10:
+        return pcm
+    floor = sorted(r)[int(cnt * 0.15)]
+    thr = max(floor * 3.0, 60)
+    idx = [i for i, v in enumerate(r) if v > thr]
+    if not idx:
+        return pcm
+    a = max(0, idx[0] - 5)
+    b = min(cnt, idx[-1] + 6)
+    if b - a >= cnt - 2:
+        return pcm
+    return pcm[a * C * 2: b * C * 2]
+
+
+def run_effects(pcm, sr, spec, rng):
+    """Применяет набор эффектов spec к моно int16 PCM, возвращает bytes."""
+    pcm = pcm[: len(pcm) // 2 * 2]
+    if not pcm or not spec:
+        return pcm
+    ref_rms = audioop.rms(pcm, SAMPLE_WIDTH)
+    if ref_rms == 0:
+        return pcm
+
+    speed = spec.get("speed", 1.0)
+    x = _pitch_time(pcm, sr, spec.get("pitch", 1.0), speed)
+    for lp_pitch, lp_gain in spec.get("layers", []):
+        layer = _pitch_time(pcm, sr, lp_pitch, speed)
+        m = min(len(x), len(layer)) // 2 * 2
+        x = audioop.add(x[:m], audioop.mul(layer[:m], SAMPLE_WIDTH, lp_gain), SAMPLE_WIDTH)
+
+    if spec.get("reverse"):
+        x = audioop.reverse(x, SAMPLE_WIDTH)
+    if spec.get("scramble"):
+        x = _scramble(x, sr, rng)
+    if spec.get("glitch"):
+        x = _glitch(x, sr, rng)
+    if "ring" in spec:
+        freq, mix = spec["ring"]
+        x = _amp_mod(x, sr, freq, 1.0 - 2.0 * mix, 1.0)
+    if "trem" in spec:
+        rate, depth = spec["trem"]
+        x = _amp_mod(x, sr, rate, 1.0 - depth, 1.0)
+    if "vib" in spec:
+        rate, depth_ms, base_ms, mix = spec["vib"]
+        x = _mod_delay(x, sr, rate, depth_ms, base_ms, mix)
+    if "hp" in spec:
+        x = _highpass(x, sr, spec["hp"])
+    if "lp" in spec:
+        x = _lowpass(x, sr, spec["lp"], spec.get("lp_poles", 1))
+    tone = spec.get("tone", 0)
+    if tone == 1:
+        x = _lowpass(x, sr, 3000)
+    elif tone == 2:
+        x = _bright(x, sr)
+    elif tone == 3:
+        x = _lowpass(_highpass(x, sr, 300), sr, 3400)
+    if "crush" in spec:
+        x = _bitcrush(x, sr, spec["crush"][0], spec["crush"][1])
+    if spec.get("ulaw"):
+        x = audioop.ulaw2lin(audioop.lin2ulaw(x, SAMPLE_WIDTH), SAMPLE_WIDTH)
+    if "drive" in spec:
+        x = audioop.mul(x, SAMPLE_WIDTH, spec["drive"])
+    if "echo" in spec:
+        x = _echo(x, sr, spec["echo"][0], spec["echo"][1])
+    if "reverb" in spec:
+        x = _reverb(x, sr, spec["reverb"][0], spec["reverb"][1])
+    if spec.get("noise"):
+        x = _add_noise(x, spec["noise"])
+    x = _match_level(x, ref_rms)
+    if spec.get("fade"):
+        x = _fade(x, sr)
+    if spec.get("gain_db"):
+        x = audioop.mul(x, SAMPLE_WIDTH, 10.0 ** (spec["gain_db"] / 20.0))
+    return x
+
+
+# ─────────────────────────── Opus / Ogg (Android) ───────────────────────────
+
+def _decode_opus_to_pcm(ogg_path):
+    log(f"{TAG} decoding: {ogg_path}")
+    MediaExtractor = jclass("android.media.MediaExtractor")
+    MediaCodec = jclass("android.media.MediaCodec")
+    MediaFormat = jclass("android.media.MediaFormat")
+
+    extractor = MediaExtractor()
+    extractor.setDataSource(ogg_path)
+
+    audio_track = -1
+    mime = None
+    input_format = None
+    for i in range(extractor.getTrackCount()):
+        fmt = extractor.getTrackFormat(i)
+        m = str(fmt.getString(MediaFormat.KEY_MIME))
+        if m.startswith("audio/"):
+            audio_track, mime, input_format = i, m, fmt
+            break
+    if audio_track == -1:
+        extractor.release()
+        return None, NATIVE_SR, 1
+
+    extractor.selectTrack(audio_track)
+    sr = NATIVE_SR
+    channels = 1
+    try:
+        sr = int(input_format.getInteger(MediaFormat.KEY_SAMPLE_RATE))
+    except Exception as e:
+        log(f"{TAG} sample rate unknown: {e}")
+    try:
+        channels = int(input_format.getInteger(MediaFormat.KEY_CHANNEL_COUNT))
+    except Exception as e:
+        log(f"{TAG} channel count unknown: {e}")
+
+    codec = MediaCodec.createDecoderByType(mime)
+    codec.configure(input_format, None, None, 0)
+    codec.start()
+
+    chunks = []
+    TIMEOUT = 10000
+    info = MediaCodec.BufferInfo()
+    eos_in = False
+    eos_out = False
+    deadline = time.time() + 120
+    try:
+        while not eos_out:
+            if time.time() > deadline:
+                raise RuntimeError("decode timeout")
+            if not eos_in:
+                idx = codec.dequeueInputBuffer(TIMEOUT)
+                if idx >= 0:
+                    buf = codec.getInputBuffer(idx)
+                    buf.clear()
+                    n = extractor.readSampleData(buf, 0)
+                    if n < 0:
+                        codec.queueInputBuffer(idx, 0, 0, 0, 4)
+                        eos_in = True
+                    else:
+                        codec.queueInputBuffer(idx, 0, n, extractor.getSampleTime(), 0)
+                        extractor.advance()
+            out_idx = codec.dequeueOutputBuffer(info, TIMEOUT)
+            if out_idx >= 0:
+                out_buf = codec.getOutputBuffer(out_idx)
+                out_buf.position(info.offset)
+                out_buf.limit(info.offset + info.size)
+                chunk = bytearray(info.size)
+                out_buf.get(chunk)
+                chunks.append(bytes(chunk))
+                codec.releaseOutputBuffer(out_idx, False)
+                if (info.flags & 4) != 0:
+                    eos_out = True
+    finally:
+        try:
+            codec.stop()
+            codec.release()
+        except Exception:
+            pass
+        extractor.release()
+
+    pcm = b"".join(chunks)
+    log(f"{TAG} decoded bytes={len(pcm)} sr={sr} ch={channels}")
+    return pcm, sr, channels
+
+
+_CRC_TABLE = []
+for _i in range(256):
+    _r = _i << 24
+    for _ in range(8):
+        _r = ((_r << 1) ^ 0x04C11DB7) if (_r & 0x80000000) else (_r << 1)
+        _r &= 0xFFFFFFFF
+    _CRC_TABLE.append(_r)
+
+
+def ogg_crc(data, crc=0):
+    tbl = _CRC_TABLE
+    for b in data:
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ tbl[((crc >> 24) ^ b) & 0xFF]
+    return crc
+
+
+def make_ogg_page(serial, seq, granule, flags, packets):
+    segment_table = bytearray()
+    payload = bytearray()
+    for p in packets:
+        l = len(p)
+        while l >= 255:
+            segment_table.append(255)
+            l -= 255
+        segment_table.append(l)
+        payload.extend(p)
+    header = bytearray(b'OggS')
+    header.append(0)
+    header.append(flags)
+    header.extend(struct.pack('<Q', granule))
+    header.extend(struct.pack('<I', serial))
+    header.extend(struct.pack('<I', seq))
+    header.extend(struct.pack('<I', 0))
+    header.append(len(segment_table))
+    header.extend(segment_table)
+    crc = ogg_crc(header + payload)
+    struct.pack_into('<I', header, 22, crc)
+    return header + payload
+
+
+def _encode_pcm_to_opus(pcm, out_path):
+    """pcm: моно int16 48 кГц -> Ogg/Opus файл (как записывает Telegram)."""
+    log(f"{TAG} encoding -> {out_path} pcm_bytes={len(pcm)}")
+    MediaCodec = jclass("android.media.MediaCodec")
+    MediaFormat = jclass("android.media.MediaFormat")
+
+    fmt = MediaFormat.createAudioFormat("audio/opus", NATIVE_SR, 1)
+    fmt.setInteger(MediaFormat.KEY_BIT_RATE, 32000)
+    fmt.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 65536)
+
+    codec = MediaCodec.createEncoderByType("audio/opus")
+    codec.configure(fmt, None, None, 1)
+    codec.start()
+
+    serial = 0x12345678
+    opus_head = bytearray(b'OpusHead')
+    opus_head.append(1)
+    opus_head.append(1)
+    opus_head.extend(struct.pack('<H', 312))
+    opus_head.extend(struct.pack('<I', 48000))
+    opus_head.extend(struct.pack('<H', 0))
+    opus_head.append(0)
+
+    opus_tags = bytearray(b'OpusTags')
+    opus_tags.extend(struct.pack('<I', 8))
+    opus_tags.extend(b'exteraGr')
+    opus_tags.extend(struct.pack('<I', 0))
+
+    try:
+        with open(out_path, "wb") as f:
+            f.write(make_ogg_page(serial, 0, 0, 2, [opus_head]))
+            f.write(make_ogg_page(serial, 1, 0, 0, [opus_tags]))
+
+            TIMEOUT = 10000
+            info = MediaCodec.BufferInfo()
+            chunk_size = 960 * SAMPLE_WIDTH
+            eos_in = False
+            eos_out = False
+            offset = 0
+            total = len(pcm)
+            pts = 0
+            seq = 2
+            granule = 0
+            deadline = time.time() + 180
+
+            while not eos_out:
+                if time.time() > deadline:
+                    raise RuntimeError("encode timeout")
+                if not eos_in:
+                    idx = codec.dequeueInputBuffer(TIMEOUT)
+                    if idx >= 0:
+                        buf = codec.getInputBuffer(idx)
+                        buf.clear()
+                        rem = total - offset
+                        if rem <= 0:
+                            codec.queueInputBuffer(idx, 0, 0, pts, 4)
+                            eos_in = True
+                        else:
+                            n = min(chunk_size, rem)
+                            buf.put(bytearray(pcm[offset: offset + n]))
+                            codec.queueInputBuffer(idx, 0, n, pts, 0)
+                            pts += (n // SAMPLE_WIDTH) * 1000000 // NATIVE_SR
+                            offset += n
+
+                out_idx = codec.dequeueOutputBuffer(info, TIMEOUT)
+                if out_idx >= 0:
+                    if (info.flags & 2) == 0:
+                        out_buf = codec.getOutputBuffer(out_idx)
+                        out_buf.position(info.offset)
+                        out_buf.limit(info.offset + info.size)
+                        chunk = bytearray(info.size)
+                        out_buf.get(chunk)
+                        is_eos = (info.flags & 4) != 0
+                        granule += 960
+                        f.write(make_ogg_page(serial, seq, granule, 4 if is_eos else 0, [chunk]))
+                        seq += 1
+                    codec.releaseOutputBuffer(out_idx, False)
+                    if (info.flags & 4) != 0:
+                        eos_out = True
+    finally:
+        try:
+            codec.stop()
+            codec.release()
+        except Exception:
+            pass
+
+
+def _process_voice_file(plugin, path, effect_id):
+    """Перекодирует файл голосового на месте. Возвращает длительность (сек)."""
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        raise RuntimeError("voice file is missing or empty")
+    t0 = time.time()
+
+    pcm, sr, channels = _decode_opus_to_pcm(path)
+    if not pcm:
+        raise RuntimeError("decoded PCM is empty")
+    pcm = pcm[: len(pcm) // 2 * 2]
+    if channels == 2:
+        pcm = audioop.tomono(pcm, SAMPLE_WIDTH, 0.5, 0.5)
+
+    q = int(plugin.get_setting("quality", 0))
+    q = 0 if q < 0 or q >= len(DSP_RATES) else q
+    dsp_sr = DSP_RATES[q] or sr
+    if dsp_sr > sr:
+        dsp_sr = sr
+
+    rng = random.Random(os.urandom(16))
+    spec = plugin.build_spec(effect_id, rng)
+    log(f"{TAG} effect={effect_id} dsp_sr={dsp_sr} spec={spec}")
+
+    x = _resample(pcm, sr, dsp_sr)
+    if plugin.get_setting("trim", False):
+        x = _trim_silence(x, dsp_sr)
+    gate = _idx(plugin.get_setting, "gate", 0, len(GATE_ITEMS))
+    if gate > 0:
+        x = _gate(x, dsp_sr, gate)
+    y = run_effects(x, dsp_sr, spec, rng)
+    out = _resample(y, dsp_sr, NATIVE_SR)
+
+    tmp = path + ".vc_tmp"
+    try:
+        _encode_pcm_to_opus(out, tmp)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
+    seconds = len(out) / 2.0 / NATIVE_SR
+    log(f"{TAG} done in {time.time() - t0:.2f}s, {seconds:.1f}s of audio")
+    return seconds
+
+
+# ──────────────────────────────── ПЛАГИН ────────────────────────────────
+
+DEFAULTS = {
+    "enabled": True, "effect": EFFECT_ANON, "scope": 0, "confirm": False,
+    "anon_dir": 0, "anon_random": True,
+    "x_shift": SHIFT_DEFAULT, "x_speed": 2, "x_volume": 2, "x_tone": 0,
+    "x_echo": 0, "x_reverb": 0, "x_noise": 0, "x_fade": True,
+    "gate": 0, "trim": False,
+    "c_pitch": 5, "c_speed": 5, "c_delay": 0, "c_feedback": 0, "c_reverb": 0,
+    "c_robot": 0, "c_vib": 0, "c_radio": False,
+    "quality": 0, "notify": True, "send_on_error": False,
+}
+
+
+def _effect_name(eid):
+    return f"{EFFECTS[eid][0]} {EFFECTS[eid][1]}"
+
+
+class VoiceChangerPro(BasePlugin):
+
+    def on_plugin_load(self):
+        self._handled = {}
+        self._state_lock = threading.Lock()
+        self._proc_lock = threading.Lock()
+        self._stats = {"ok": 0, "fail": 0, "time": 0.0}
+        self._hook_send()
+        self._add_menu()
+        log(f"{TAG} loaded v{__version__}")
+
+    # ---------- настройки ----------
+
+    def create_settings(self) -> List[Any]:
+        items = []
+        state = {"div": False}
+
+        def header(text):
+            items.append(Header(text=text))
+            state["div"] = False
+
+        def switch(**kw):
+            items.append(Switch(**kw))
+            state["div"] = False
+
+        def sel(key, text, default, opts, desc):
+            # Selector не умеет подпись, поэтому описание — серым текстом сразу под пунктом
+            items.append(Selector(key=key, text=text, default=default, items=opts))
+            try:
+                items.append(Divider(text=desc))
+                state["div"] = True
+            except TypeError:
+                state["div"] = False
+
+        def end_section(note=None):
+            if note:
+                try:
+                    items.append(Divider(text=note))
+                    state["div"] = True
+                    return
+                except TypeError:
+                    pass
+            if not state["div"]:
+                items.append(Divider())
+                state["div"] = True
+
+        header("Основное")
+        switch(key="enabled", text="Менять голос", default=True,
+               subtext="Голосовые обрабатываются перед отправкой")
+        sel("effect", "Голос", EFFECT_ANON, EFFECT_ITEMS,
+            "Какой голос применять. 🕶️ Аноним и 🥷 Аноним+ — маскировка личности, 🔐 Шифр — речь "
+            "не разобрать, 🎲 Случайный — новый голос каждый раз. Быстро сменить: меню чата → «Смена голоса».")
+        sel("scope", "Где менять голос", 0, SCOPE_ITEMS,
+            "Во всех чатах, только в личных или только в группах и каналах.")
+        switch(key="confirm", text="Спрашивать перед отправкой", default=False,
+               subtext="Окно: с эффектом / оригинал / отмена")
+        end_section()
+
+        header("Режим «Аноним» / «Аноним+»")
+        sel("anon_dir", "Направление высоты", 0, ANON_DIR_ITEMS,
+            "Куда сдвигать голос. «Случайно» — сторона выбирается заново для каждого сообщения.")
+        switch(key="anon_random", text="Случайные параметры", default=True,
+               subtext="Каждое сообщение звучит чуть иначе — их нельзя связать по тембру")
+        end_section()
+
+        header("Подстройка поверх любого голоса")
+        sel("x_shift", "Сдвиг высоты (полутоны)", SHIFT_DEFAULT, SHIFT_ITEMS,
+            "Поднимает или опускает голос выбранного эффекта. 12 полутонов — ровно одна октава.")
+        sel("x_speed", "Скорость речи", 2, XSPEED_ITEMS,
+            "Ускоряет или замедляет речь, не меняя высоту. Удобно, чтобы сжать длинные голосовые.")
+        sel("x_volume", "Громкость", 2, VOLUME_ITEMS,
+            "Итоговая громкость голосового после всех эффектов.")
+        sel("x_tone", "Тембр", 0, TONE_ITEMS,
+            "Тёплый — глуше и мягче, Яркий — звонче и чётче, Телефон — как через трубку.")
+        sel("x_echo", "Добавить эхо", 0, XECHO_ITEMS,
+            "Повторы голоса с небольшой задержкой поверх любого эффекта.")
+        sel("x_reverb", "Добавить реверберацию", 0, XREVERB_ITEMS,
+            "Гулкость помещения: от комнаты до пещеры.")
+        sel("x_noise", "Добавить шум / помехи", 0, XNOISE_ITEMS,
+            "Фоновое шипение. Голос звучит грязнее и труднее узнаётся.")
+        switch(key="x_fade", text="Плавное начало и конец", default=True,
+               subtext="Убирает щелчки на стыках")
+        end_section()
+
+        header("Очистка звука")
+        sel("gate", "Подавление фонового шума", 0, GATE_ITEMS,
+            "Приглушает шум между словами (вентилятор, улица, комната). Чем сильнее, тем тише паузы.")
+        switch(key="trim", text="Обрезать тишину по краям", default=False,
+               subtext="Убирает паузы в начале и конце. Работает и при голосе «Выкл»")
+        end_section()
+
+        header("Голос «Свой»")
+        sel("c_pitch", "Высота", 5, PITCH_ITEMS,
+            "Меньше 1.0x — голос ниже, больше 1.0x — выше.")
+        sel("c_speed", "Скорость", 5, SPEED_ITEMS,
+            "Скорость речи. Высота голоса при этом не меняется.")
+        sel("c_delay", "Эхо: задержка", 0, DELAY_ITEMS,
+            "Через сколько миллисекунд голос повторяется. Работает вместе с «Эхо: повторы».")
+        sel("c_feedback", "Эхо: повторы", 0, FEEDBACK_ITEMS,
+            "Сколько повторов эха и насколько они громкие.")
+        sel("c_reverb", "Реверберация", 0, REVERB_ITEMS,
+            "Гулкость помещения: чем больше, тем сильнее «зал».")
+        sel("c_robot", "Робот (несущая)", 0, ROBOT_ITEMS,
+            "Частота металлической модуляции. Ниже — грубее и «злее», выше — звонче.")
+        sel("c_vib", "Вибрато", 0, VIB_ITEMS,
+            "Лёгкое дрожание высоты голоса.")
+        switch(key="c_radio", text="Эффект рации", default=False,
+               subtext="Узкая полоса, сжатие и шум, как в рации")
+        end_section()
+
+        header("Обработка")
+        sel("quality", "Качество / скорость", 0, QUALITY_ITEMS,
+            "16 кГц — быстро, 48 кГц — чище звук, но дольше ждать перед отправкой.")
+        switch(key="notify", text="Показывать уведомления", default=True,
+               subtext="«Обработка голоса…» и сообщения об ошибках")
+        switch(key="send_on_error", text="При ошибке отправить оригинал", default=False,
+               subtext="Выключено: если обработка не удалась, оригинальный голос НЕ уйдёт")
+        end_section()
+
+        header("Сервис")
+        try:
+            items.append(Text(text="Самопроверка", on_click=lambda *a, **k: self._selfcheck()))
+            state["div"] = False
+        except Exception:
+            log(f"{TAG} Text item failed: {traceback.format_exc()}")
+        try:
+            try:
+                items.append(Text(text="Сбросить настройки", red=True,
+                                  on_click=lambda *a, **k: self._reset_settings()))
+            except TypeError:
+                items.append(Text(text="Сбросить настройки",
+                                  on_click=lambda *a, **k: self._reset_settings()))
+            state["div"] = False
+        except Exception:
+            log(f"{TAG} Text item failed: {traceback.format_exc()}")
+        end_section("Самопроверка проверяет кодек и обработку на тестовом звуке. "
+                    "«Сбросить настройки» возвращает всё по умолчанию.")
+        return items
+
+    def build_spec(self, effect_id, rng):
+        get = self.get_setting
+        if effect_id == EFFECT_RANDOM:
+            effect_id = rng.choice(RANDOM_POOL)
+            log(f"{TAG} random voice -> {EFFECTS[effect_id][1]}")
+        if effect_id in (EFFECT_ANON, EFFECT_ANON_MAX):
+            base = _anon_spec(effect_id == EFFECT_ANON_MAX, int(get("anon_dir", 0)),
+                              bool(get("anon_random", True)), rng)
+        elif effect_id == EFFECT_CUSTOM:
+            base = _custom_spec(get)
+        else:
+            base = dict(EFFECTS.get(effect_id, EFFECTS[EFFECT_NONE])[3])
+        return _apply_overlays(base, get)
+
+    def _cleanup_active(self):
+        if int(self.get_setting("gate", 0)) > 0 or self.get_setting("trim", False):
+            return True
+        spec = _apply_overlays({}, self.get_setting)
+        spec.pop("fade", None)
+        return bool(spec)
+
+    # ---------- настройки для отдельных чатов ----------
+
+    def _overrides(self):
+        try:
+            d = json.loads(self.get_setting("chat_map", "{}") or "{}")
+            return d if isinstance(d, dict) else {}
+        except Exception:
+            return {}
+
+    def _save_overrides(self, d):
+        self.set_setting("chat_map", json.dumps(d))
+
+    def _resolve_effect(self, peer):
+        """Эффект для чата; None = в этом чате ничего не менять."""
+        effect = int(self.get_setting("effect", EFFECT_ANON))
+        ov = self._overrides().get(str(peer))
+        if ov is not None:
+            return None if int(ov) == EFFECT_NONE else int(ov)
+        scope = int(self.get_setting("scope", 0))
+        if (scope == 1 and peer < 0) or (scope == 2 and peer > 0):
+            return None
+        return effect
+
+    # ---------- меню чата ----------
+
+    def _add_menu(self):
+        for text, fn in (("Смена голоса", self._show_effect_dialog),
+                         ("Голос в этом чате", self._show_chat_dialog)):
+            try:
+                self.add_menu_item(MenuItemData(
+                    menu_type=MenuItemType.CHAT_ACTION_MENU,
+                    text=text,
+                    on_click=lambda *a, f=fn, **k: f(),
+                ))
+            except Exception:
+                log(f"{TAG} menu item '{text}' failed: {traceback.format_exc()}")
+
+    @staticmethod
+    def _listener(fn):
+        OnClick = jclass("android.content.DialogInterface$OnClickListener")
+
+        class _Listener(dynamic_proxy(OnClick)):
+            def onClick(self, dialog, which):
+                try:
+                    fn(int(which))
+                except Exception:
+                    log(f"{TAG} dialog callback failed: {traceback.format_exc()}")
+
+        return _Listener()
+
+    def _builder(self):
+        frag = get_last_fragment()
+        activity = frag.getParentActivity()
+        Builder = find_class("org.telegram.ui.ActionBar.AlertDialog$Builder")
+        return Builder(activity), frag
+
+    def _show_list_dialog(self, title, labels, on_pick):
+        try:
+            builder, _ = self._builder()
+            builder.setTitle(title)
+            arr = jarray(jclass("java.lang.CharSequence"))(labels)
+            builder.setItems(arr, self._listener(on_pick))
+            builder.setNegativeButton("Отмена", None)
+            builder.show()
+        except Exception:
+            log(f"{TAG} dialog failed: {traceback.format_exc()}")
+
+    def _show_effect_dialog(self):
+        current = int(self.get_setting("effect", EFFECT_ANON))
+        enabled = bool(self.get_setting("enabled", True))
+        labels = [("✓ " if (i == current and enabled) else "") + _effect_name(i)
+                  for i in range(len(EFFECTS))]
+        self._show_list_dialog("Смена голоса", labels, self._select_effect)
+
+    def _select_effect(self, effect_id):
+        self.set_setting("effect", effect_id)
+        self.set_setting("enabled", effect_id != EFFECT_NONE)
+        self._toast(f"Голос: {_effect_name(effect_id)}", force=True)
+
+    def _show_chat_dialog(self):
+        try:
+            did = int(get_last_fragment().getDialogId())
+        except Exception:
+            self._toast("Открой этот пункт внутри чата", force=True)
+            return
+        ov = self._overrides().get(str(did))
+        labels = ["↩️ По умолчанию" + (" ✓" if ov is None else ""),
+                  "🔇 Выключить в этом чате" + (" ✓" if ov is not None and int(ov) == 0 else "")]
+        for i in range(1, len(EFFECTS)):
+            labels.append(("✓ " if ov is not None and int(ov) == i else "") + _effect_name(i))
+
+        def pick(k):
+            d = self._overrides()
+            if k == 0:
+                d.pop(str(did), None)
+                msg = "В этом чате: по умолчанию"
+            elif k == 1:
+                d[str(did)] = EFFECT_NONE
+                msg = "В этом чате голос не меняется"
+            else:
+                d[str(did)] = k - 1
+                msg = f"В этом чате: {_effect_name(k - 1)}"
+            self._save_overrides(d)
+            self._toast(msg, force=True)
+
+        self._show_list_dialog("Голос в этом чате", labels, pick)
+
+    # ---------- перехват отправки ----------
+
+    def _hook_send(self):
+        plugin = self
+
+        class SendHook(MethodHook):
+            def before_hooked_method(self, param):
+                try:
+                    plugin._on_before_send(param)
+                except Exception:
+                    log(f"{TAG} hook error: {traceback.format_exc()}")
+
+        hook = SendHook()
+        cls = find_class("org.telegram.messenger.SendMessagesHelper")
+        try:
+            self.hook_all_methods(cls, "sendMessage", hook)
+            log(f"{TAG} hooked SendMessagesHelper.sendMessage")
+            return
+        except Exception:
+            log(f"{TAG} hook_all_methods failed: {traceback.format_exc()}")
+        try:
+            jc = jclass("java.lang.Class").forName("org.telegram.messenger.SendMessagesHelper")
+            count = 0
+            for m in jc.getDeclaredMethods():
+                if str(m.getName()) == "sendMessage" and int(m.getParameterCount()) == 1:
+                    self.hook_method(m, hook)
+                    count += 1
+            log(f"{TAG} hooked via reflection: {count} method(s)")
+        except Exception:
+            log(f"{TAG} reflection hook failed: {traceback.format_exc()}")
+
+    @staticmethod
+    def _voice_attr(doc):
+        attrs = doc.attributes
+        if attrs is None:
+            return None
+        for i in range(int(attrs.size())):
+            a = attrs.get(i)
+            if str(a.getClass().getSimpleName()).startswith("TL_documentAttributeAudio"):
+                return a
+        return None
+
+    @staticmethod
+    def _signature(path):
+        return (os.path.getsize(path), int(os.path.getmtime(path)))
+
+    def _on_before_send(self, param):
+        if not self.get_setting("enabled", True):
+            return
+        args = param.args
+        if args is None or len(args) != 1:
+            return
+        p = args[0]
+        try:
+            doc = p.document
+            path = p.path
+        except Exception:
+            return
+        if doc is None or not path:
+            return
+        path = str(path)
+        attr = self._voice_attr(doc)
+        if attr is None or not bool(attr.voice) or not os.path.isfile(path):
+            return
+        try:
+            peer = int(p.peer)
+        except Exception:
+            peer = 0
+        effect = self._resolve_effect(peer)
+        if effect is None:
+            return
+        if effect == EFFECT_NONE and not self._cleanup_active():
+            return
+        with self._state_lock:
+            if self._handled.get(path) == self._signature(path):
+                return  # уже обработано — отправка идёт дальше
+
+        helper = param.thisObject
+        try:
+            param.setResult(None)  # отменяем отправку, пока обрабатываем
+        except Exception:
+            log(f"{TAG} setResult unavailable, processing inline")
+            self._transform(doc, path, effect)
+            return
+        if self.get_setting("confirm", False):
+            self._ask_confirm(helper, p, doc, path, effect)
+        else:
+            self._start_worker(helper, p, doc, path, effect)
+
+    def _start_worker(self, helper, params, doc, path, effect):
+        threading.Thread(target=self._worker, args=(helper, params, doc, path, effect),
+                         daemon=True).start()
+
+    def _ask_confirm(self, helper, p, doc, path, effect):
+        plugin = self
+
+        def show():
+            try:
+                builder, _ = plugin._builder()
+                builder.setTitle("Отправить голосовое?")
+                builder.setMessage("Голос: " + _effect_name(effect))
+
+                def with_fx(_):
+                    plugin._start_worker(helper, p, doc, path, effect)
+
+                def original(_):
+                    plugin._mark(path)
+                    run_on_ui_thread(lambda: helper.sendMessage(p))
+
+                builder.setPositiveButton("С эффектом", plugin._listener(with_fx))
+                builder.setNeutralButton("Оригинал", plugin._listener(original))
+                builder.setNegativeButton("Отмена", plugin._listener(lambda _: None))
+                builder.show()
+            except Exception:
+                log(f"{TAG} confirm dialog failed: {traceback.format_exc()}")
+                plugin._start_worker(helper, p, doc, path, effect)
+
+        run_on_ui_thread(show)
+
+    def _worker(self, helper, params, doc, path, effect):
+        self._toast("Обработка голоса…")
+        ok = self._transform(doc, path, effect)
+        if ok:
+            run_on_ui_thread(lambda: helper.sendMessage(params))
+
+    def _transform(self, doc, path, effect):
+        t0 = time.time()
+        try:
+            with self._proc_lock:
+                seconds = _process_voice_file(self, path, effect)
+            self._update_doc(doc, path, seconds)
+            self._mark(path)
+            self._stats["ok"] += 1
+            self._stats["time"] += time.time() - t0
+            return True
+        except Exception:
+            self._stats["fail"] += 1
+            log(f"{TAG} processing failed: {traceback.format_exc()}")
+            if self.get_setting("send_on_error", False):
+                self._mark(path)
+                self._toast("Не удалось изменить голос — отправлен оригинал", force=True)
+                return True
+            self._toast("Не удалось изменить голос — сообщение не отправлено", force=True)
+            return False
+
+    def _mark(self, path):
+        with self._state_lock:
+            self._handled[path] = self._signature(path)
+            if len(self._handled) > 200:
+                for k in list(self._handled)[:100]:
+                    self._handled.pop(k, None)
+
+    def _update_doc(self, doc, path, seconds):
+        try:
+            doc.size = int(os.path.getsize(path))
+        except Exception:
+            pass
+        try:
+            attr = self._voice_attr(doc)
+            if attr is not None:
+                attr.duration = int(math.ceil(seconds))
+        except Exception:
+            pass
+
+    # ---------- сервис ----------
+
+    def _selfcheck(self):
+        def work():
+            try:
+                self._toast("Самопроверка…", force=True)
+                t0 = time.time()
+                sr = 16000
+                x = array.array('h', [
+                    int(6000 * (math.sin(2 * math.pi * 140 * i / sr)
+                                + 0.5 * math.sin(2 * math.pi * 280 * i / sr)
+                                + 0.3 * math.sin(2 * math.pi * 420 * i / sr))
+                        * (0.5 + 0.5 * math.sin(2 * math.pi * 2 * i / sr)))
+                    for i in range(sr * 3)]).tobytes()
+                rng = random.Random(1)
+                effect = int(self.get_setting("effect", EFFECT_ANON))
+                if effect == EFFECT_NONE:
+                    effect = EFFECT_ANON
+                y = run_effects(x, sr, self.build_spec(effect, rng), rng)
+                t_dsp = time.time() - t0
+                out = _resample(y, sr, NATIVE_SR)
+                fd, tmp = tempfile.mkstemp(suffix=".ogg")
+                os.close(fd)
+                try:
+                    _encode_pcm_to_opus(out, tmp)
+                    pcm, _sr, _ch = _decode_opus_to_pcm(tmp)
+                    if not pcm:
+                        raise RuntimeError("декодер вернул пустой звук")
+                finally:
+                    try:
+                        os.remove(tmp)
+                    except Exception:
+                        pass
+                st = self._stats
+                self._toast(f"✅ Всё работает. Обработка 3 с звука: {t_dsp:.1f} с. "
+                            f"Обработано: {st['ok']}, ошибок: {st['fail']}", force=True)
+            except Exception as e:
+                log(f"{TAG} selfcheck failed: {traceback.format_exc()}")
+                self._toast(f"❌ Ошибка самопроверки: {e}", force=True)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _reset_settings(self):
+        for k, v in DEFAULTS.items():
+            self.set_setting(k, v)
+        self.set_setting("chat_map", "{}")
+        self._toast("Настройки сброшены. Переоткрой экран плагина", force=True)
+
+    def _toast(self, text, force=False):
+        if not force and not self.get_setting("notify", True):
+            return
+        try:
+            run_on_ui_thread(lambda: BulletinHelper.show_info(text))
+        except Exception:
+            pass

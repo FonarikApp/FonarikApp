@@ -1,0 +1,638 @@
+"""
+Undo Send — задержка отправки с возможностью отменить
+
+Автор: @mishabotov
+"""
+
+import threading
+import time
+import uuid
+from dataclasses import dataclass
+from typing import Any, List, Optional, Set, Tuple
+
+from android_utils import run_on_ui_thread
+from base_plugin import AppEvent, BasePlugin, HookResult, HookStrategy
+from client_utils import get_last_fragment, get_user_config
+from java.util import HashMap
+from org.telegram.messenger import (
+    AndroidUtilities,
+    MediaDataController,
+    R as TelegramR,
+    SendMessagesHelper,
+)
+from ui.bulletin import BulletinHelper
+from ui.settings import Divider, Header, Input, Selector, Switch
+
+__id__ = "undo_send"
+__name__ = "Undo Send"
+__description__ = "задерживает отправку на несколько секунд и даёт отменить её одной кнопкой"
+__author__ = "@mishabotov"
+__version__ = "1.0"
+__icon__ = "mishaplugins_by_fStikBot/1"
+
+
+MARKER_KEY = "undo_send_marker"
+GROUP_KEY = "groupId"
+
+SCOPE_EVERYWHERE = 0
+SCOPE_PRIVATE = 1
+SCOPE_GROUPS = 2
+
+CANCEL_SCOPE_SINGLE = 0
+CANCEL_SCOPE_ALL = 1
+
+DEFAULT_ENABLED = True
+DEFAULT_DELAY_SECONDS = 5
+MIN_DELAY_SECONDS = 1
+MAX_DELAY_SECONDS = 60
+DEFAULT_SCOPE = SCOPE_EVERYWHERE
+DEFAULT_INCLUDE_MEDIA = False
+DEFAULT_SKIP_SAVED = True
+DEFAULT_RESTORE_TEXT = True
+DEFAULT_FLUSH_ON_PAUSE = True
+DEFAULT_CANCEL_SCOPE = CANCEL_SCOPE_SINGLE
+
+MEDIA_FIELDS = (
+    "photo",
+    "document",
+    "videoEditedInfo",
+    "location",
+    "poll",
+    "todo",
+    "invoice",
+    "game",
+    "user",
+    "mediaWebPage",
+    "cover",
+    "path",
+    "retryMessageObject",
+    "sendingStory",
+    "replyToStoryItem",
+    "richMessage",
+)
+
+KIND_TEXT = "text"
+KIND_MEDIA = "media"
+
+
+STRINGS = {
+    "header_main": "Основное",
+    "header_behaviour": "Поведение",
+    "enabled_title": "Включить Undo Send",
+    "enabled_hint": "Придерживать исходящие сообщения перед фактической отправкой.",
+    "delay_title": "Задержка (секунды)",
+    "delay_hint": "От 1 до 60. Сейчас: {value} с.",
+    "scope_title": "Где действует",
+    "scope_everywhere": "Везде",
+    "scope_private": "Только личные чаты",
+    "scope_groups": "Только группы и каналы",
+    "media_title": "Придерживать и медиа",
+    "media_hint": "Фото, видео, файлы и стикеры. Отменённое медиа восстановить нельзя, альбомы не задерживаются.",
+    "saved_title": "Не трогать Избранное",
+    "saved_hint": "Заметки самому себе уходят сразу.",
+    "restore_title": "Возвращать текст при отмене",
+    "restore_hint": "Текст вернётся в поле ввода, а если вы уже ушли из чата — в его черновик.",
+    "flush_title": "Отправлять при сворачивании",
+    "flush_hint": "При уходе из приложения очередь отправляется сразу, чтобы ничего не потерялось.",
+    "cancel_scope_title": "Кнопка отменяет",
+    "cancel_scope_single": "Только это сообщение",
+    "cancel_scope_all": "Всю очередь",
+    "footer": "Пока виден bulletin (плашка), сообщение ещё не отправлено. Дальше отправка идёт ровно так же, как обычно.",
+    "bulletin_text": "Отправка через {seconds} с",
+    "bulletin_queue": "в очереди: {count}",
+    "bulletin_undo": "Отменить",
+    "cancelled": "Отправка отменена",
+    "cancelled_many": "Отправка отменена ({count})",
+    "cancelled_draft": "Отменено, текст сохранён в черновик",
+    "cancelled_media": "Отправка отменена, медиа не восстановлено",
+    "send_failed": "Не удалось отправить отложенное сообщение",
+}
+
+
+def localise(key: str) -> str:
+    return STRINGS.get(key, key)
+
+
+def now_ms() -> int:
+    return int(time.monotonic() * 1000)
+
+
+@dataclass(eq=False)
+class PendingEntry:
+    marker: str
+    account: int
+    peer: int
+    params: Any
+    deadline_ms: int
+    kind: str = KIND_TEXT
+    text: Optional[str] = None
+    entities: Any = None
+    reply_to: Any = None
+    reply_quote: Any = None
+    dispatched: bool = False
+
+
+class UndoSendPlugin(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self._state = threading.Condition()
+        self._pending: List[PendingEntry] = []
+        self._worker: Optional[threading.Thread] = None
+        self._running = False
+
+    def on_plugin_load(self):
+        self._running = True
+        self.add_on_send_message_hook()
+        self._worker = threading.Thread(
+            target=self._worker_loop,
+            name="undo_send_worker",
+            daemon=True,
+        )
+        self._worker.start()
+        self.log("[undo_send] loaded")
+
+    def on_plugin_unload(self):
+        with self._state:
+            self._running = False
+            self._state.notify_all()
+        self._flush_all()
+        self._worker = None
+        self.log("[undo_send] unloaded")
+
+    def on_app_event(self, event_type):
+        try:
+            if event_type not in (AppEvent.PAUSE, AppEvent.STOP):
+                return
+            if not self._bool_setting("flush_on_pause", DEFAULT_FLUSH_ON_PAUSE):
+                return
+            self._flush_all()
+        except Exception as error:
+            self.log(f"[undo_send] app event error: {error}")
+
+    def create_settings(self) -> List[Any]:
+        return [
+            Header(text=localise("header_main")),
+            Switch(
+                key="enabled",
+                text=localise("enabled_title"),
+                subtext=localise("enabled_hint"),
+                default=DEFAULT_ENABLED,
+                icon="msg_send",
+                on_change=self._on_enabled_changed,
+            ),
+            Input(
+                key="delay_seconds",
+                text=localise("delay_title"),
+                subtext=localise("delay_hint").format(value=self._delay_seconds()),
+                default=str(DEFAULT_DELAY_SECONDS),
+                icon="msg_stories_timer",
+                on_change=self._on_delay_changed,
+            ),
+            Selector(
+                key="scope",
+                text=localise("scope_title"),
+                default=DEFAULT_SCOPE,
+                items=[
+                    localise("scope_everywhere"),
+                    localise("scope_private"),
+                    localise("scope_groups"),
+                ],
+                icon="msg_folders",
+            ),
+            Divider(),
+            Header(text=localise("header_behaviour")),
+            Switch(
+                key="include_media",
+                text=localise("media_title"),
+                subtext=localise("media_hint"),
+                default=DEFAULT_INCLUDE_MEDIA,
+                icon="msg_media",
+            ),
+            Switch(
+                key="skip_saved",
+                text=localise("saved_title"),
+                subtext=localise("saved_hint"),
+                default=DEFAULT_SKIP_SAVED,
+                icon="msg_saved",
+            ),
+            Switch(
+                key="restore_text",
+                text=localise("restore_title"),
+                subtext=localise("restore_hint"),
+                default=DEFAULT_RESTORE_TEXT,
+                icon="msg_edit",
+            ),
+            Switch(
+                key="flush_on_pause",
+                text=localise("flush_title"),
+                subtext=localise("flush_hint"),
+                default=DEFAULT_FLUSH_ON_PAUSE,
+                icon="msg_retry",
+            ),
+            Selector(
+                key="cancel_scope",
+                text=localise("cancel_scope_title"),
+                default=DEFAULT_CANCEL_SCOPE,
+                items=[
+                    localise("cancel_scope_single"),
+                    localise("cancel_scope_all"),
+                ],
+                icon="msg_select",
+            ),
+            Divider(text=localise("footer")),
+        ]
+
+    def _on_enabled_changed(self, value: Any = None):
+        enabled = self._bool_setting("enabled", DEFAULT_ENABLED) if value is None else bool(value)
+        if not enabled:
+            self._flush_all()
+
+    def _on_delay_changed(self, value: Any = None):
+        raw = self.get_setting("delay_seconds", DEFAULT_DELAY_SECONDS) if value is None else value
+        normalized = str(self._parse_delay(raw))
+        if normalized != str(raw).strip():
+            self.set_setting("delay_seconds", normalized, reload_settings=True)
+
+    def _bool_setting(self, key: str, default: bool) -> bool:
+        try:
+            return bool(self.get_setting(key, default))
+        except Exception:
+            return default
+
+    def _int_setting(self, key: str, default: int) -> int:
+        try:
+            return int(self.get_setting(key, default) or 0)
+        except Exception:
+            return default
+
+    def _parse_delay(self, raw: Any) -> int:
+        try:
+            value = int(str(raw).strip())
+        except Exception:
+            return DEFAULT_DELAY_SECONDS
+        return max(MIN_DELAY_SECONDS, min(MAX_DELAY_SECONDS, value))
+
+    def _delay_seconds(self) -> int:
+        return self._parse_delay(self.get_setting("delay_seconds", DEFAULT_DELAY_SECONDS))
+
+    def on_send_message_hook(self, account: int, params: Any) -> HookResult:
+        try:
+            if not self._running or not self._bool_setting("enabled", DEFAULT_ENABLED):
+                return HookResult()
+
+            if self._has_marker(params):
+                return HookResult()
+
+            if int(getattr(params, "scheduleDate", 0) or 0) != 0:
+                return HookResult()
+
+            peer = int(getattr(params, "peer", 0) or 0)
+            if peer == 0:
+                return HookResult()
+
+            kind = self._classify(params)
+            if kind is None:
+                return HookResult()
+            if kind == KIND_MEDIA and not self._bool_setting("include_media", DEFAULT_INCLUDE_MEDIA):
+                return HookResult()
+
+            if not self._scope_allows(int(account), peer):
+                return HookResult()
+
+            if get_last_fragment() is None:
+                return HookResult()
+
+            entry = self._build_entry(int(account), peer, params, kind)
+            self._set_marker(entry)
+
+            with self._state:
+                self._pending.append(entry)
+                queued = len(self._pending)
+                self._state.notify_all()
+
+            self._show_bulletin(entry, queued)
+            return HookResult(strategy=HookStrategy.CANCEL)
+        except Exception as error:
+            self.log(f"[undo_send] send hook error: {error}")
+            return HookResult()
+
+    def _build_entry(self, account: int, peer: int, params: Any, kind: str) -> PendingEntry:
+        message = getattr(params, "message", None)
+        return PendingEntry(
+            marker=uuid.uuid4().hex,
+            account=account,
+            peer=peer,
+            params=params,
+            deadline_ms=now_ms() + self._delay_seconds() * 1000,
+            kind=kind,
+            text=message if isinstance(message, str) else None,
+            entities=getattr(params, "entities", None),
+            reply_to=getattr(params, "replyToMsg", None),
+            reply_quote=getattr(params, "replyQuote", None),
+        )
+
+    def _classify(self, params: Any) -> Optional[str]:
+        if params is None:
+            return None
+
+        has_media = any(getattr(params, name, None) is not None for name in MEDIA_FIELDS)
+        if has_media:
+            if self._group_id(params) is not None:
+                return None
+            return KIND_MEDIA
+
+        message = getattr(params, "message", None)
+        if isinstance(message, str) and message.strip():
+            return KIND_TEXT
+        return None
+
+    def _scope_allows(self, account: int, peer: int) -> bool:
+        if self._bool_setting("skip_saved", DEFAULT_SKIP_SAVED) and peer == self._self_id(account):
+            return False
+
+        scope = self._int_setting("scope", DEFAULT_SCOPE)
+        if scope == SCOPE_PRIVATE:
+            return peer > 0
+        if scope == SCOPE_GROUPS:
+            return peer < 0
+        return True
+
+    def _self_id(self, account: int) -> int:
+        try:
+            return int(get_user_config(account).getClientUserId())
+        except Exception:
+            return 0
+
+    def _group_id(self, params: Any) -> Optional[str]:
+        raw = getattr(params, "params", None)
+        if raw is None:
+            return None
+        try:
+            value = raw.get(GROUP_KEY)
+        except Exception:
+            return None
+        if value is None or str(value) == "0":
+            return None
+        return str(value)
+
+    def _set_marker(self, entry: PendingEntry):
+        params = entry.params
+        raw = getattr(params, "params", None)
+        if raw is None:
+            raw = HashMap()
+            params.params = raw
+        try:
+            raw.put(MARKER_KEY, entry.marker)
+        except Exception:
+            raw[MARKER_KEY] = entry.marker
+
+    def _has_marker(self, params: Any) -> bool:
+        raw = getattr(params, "params", None)
+        if raw is None:
+            return False
+        try:
+            return raw.get(MARKER_KEY) is not None
+        except Exception:
+            return False
+
+    def _worker_loop(self):
+        while True:
+            with self._state:
+                if not self._running:
+                    return
+                ready, wait_seconds = self._collect_ready()
+                if not ready:
+                    self._state.wait(wait_seconds)
+                    continue
+            for entry in ready:
+                self._dispatch(entry)
+
+    def _collect_ready(self) -> Tuple[List[PendingEntry], Optional[float]]:
+        current = now_ms()
+        ready: List[PendingEntry] = []
+        blocked: Set[Tuple[int, int]] = set()
+        next_deadline: Optional[int] = None
+
+        for entry in list(self._pending):
+            key = (entry.account, entry.peer)
+            if key in blocked:
+                continue
+            if entry.deadline_ms <= current:
+                self._pending.remove(entry)
+                ready.append(entry)
+                continue
+            blocked.add(key)
+            if next_deadline is None or entry.deadline_ms < next_deadline:
+                next_deadline = entry.deadline_ms
+
+        if next_deadline is None:
+            return ready, None
+        return ready, max(0.05, (next_deadline - current) / 1000.0)
+
+    def _dispatch(self, entry: PendingEntry):
+        def send():
+            if entry.dispatched:
+                return
+            entry.dispatched = True
+            try:
+                SendMessagesHelper.getInstance(entry.account).sendMessage(entry.params)
+            except Exception as error:
+                self.log(f"[undo_send] dispatch error: {error}")
+                self._safe_bulletin(localise("send_failed"), error=True)
+
+        run_on_ui_thread(send)
+
+    def _flush_all(self):
+        with self._state:
+            entries = list(self._pending)
+            self._pending.clear()
+            self._state.notify_all()
+        for entry in entries:
+            self._dispatch(entry)
+
+    def _on_undo_clicked(self, entry: PendingEntry):
+        try:
+            if self._int_setting("cancel_scope", DEFAULT_CANCEL_SCOPE) == CANCEL_SCOPE_ALL:
+                self._cancel_all(entry)
+            else:
+                self._cancel_one(entry)
+        except Exception as error:
+            self.log(f"[undo_send] cancel error: {error}")
+
+    def _cancel_one(self, entry: PendingEntry):
+        with self._state:
+            if entry not in self._pending:
+                return
+            self._pending.remove(entry)
+            self._state.notify_all()
+        run_on_ui_thread(lambda: self._finish_cancel(entry, 1))
+
+    def _cancel_all(self, entry: PendingEntry):
+        with self._state:
+            if entry not in self._pending:
+                return
+            entries = list(self._pending)
+            self._pending.clear()
+            self._state.notify_all()
+        run_on_ui_thread(lambda: self._finish_cancel(entry, len(entries)))
+
+    def _finish_cancel(self, entry: PendingEntry, count: int):
+        restored_to_draft = False
+
+        if entry.kind == KIND_TEXT and entry.text and self._bool_setting("restore_text", DEFAULT_RESTORE_TEXT):
+            restored_to_draft = not self._restore_to_field(entry)
+            if restored_to_draft:
+                self._save_draft(entry)
+
+        if count > 1:
+            self._safe_bulletin(localise("cancelled_many").format(count=count))
+        elif restored_to_draft:
+            self._safe_bulletin(localise("cancelled_draft"))
+        elif entry.kind == KIND_MEDIA:
+            self._safe_bulletin(localise("cancelled_media"))
+        else:
+            self._safe_bulletin(localise("cancelled"))
+
+    def _restore_to_field(self, entry: PendingEntry) -> bool:
+        fragment = get_last_fragment()
+        if fragment is None:
+            return False
+
+        get_dialog_id = getattr(fragment, "getDialogId", None)
+        if not callable(get_dialog_id):
+            return False
+        try:
+            if int(get_dialog_id()) != entry.peer:
+                return False
+        except Exception:
+            return False
+
+        get_enter_view = getattr(fragment, "getChatActivityEnterView", None)
+        if not callable(get_enter_view):
+            return False
+        try:
+            enter_view = get_enter_view()
+        except Exception:
+            return False
+        if enter_view is None:
+            return False
+
+        try:
+            enter_view.setFieldText(self._as_field_text(entry, enter_view))
+        except Exception as error:
+            self.log(f"[undo_send] restore error: {error}")
+            return False
+
+        self._restore_reply(fragment, entry)
+        return True
+
+    def _as_field_text(self, entry: PendingEntry, enter_view: Any) -> Any:
+        entities = entry.entities
+        try:
+            if entities is None or bool(entities.isEmpty()):
+                return entry.text
+        except Exception:
+            return entry.text
+
+        try:
+            from android.text import TextPaint
+            from org.telegram.ui.Components import ChatActivityEnterView
+
+            paint = None
+            try:
+                edit_field = enter_view.getEditField()
+                paint = edit_field.getPaint() if edit_field is not None else None
+            except Exception:
+                paint = None
+            if paint is None:
+                paint = TextPaint()
+                paint.setTextSize(float(AndroidUtilities.dp(18)))
+
+            return ChatActivityEnterView.applyMessageEntities(
+                entities,
+                entry.text,
+                paint.getFontMetricsInt(),
+            )
+        except Exception as error:
+            self.log(f"[undo_send] entities restore error: {error}")
+            return entry.text
+
+    def _restore_reply(self, fragment: Any, entry: PendingEntry):
+        if entry.reply_to is None:
+            return
+        try:
+            if entry.reply_quote is not None:
+                show_quote = getattr(fragment, "showFieldPanelForReplyQuote", None)
+                if callable(show_quote):
+                    show_quote(entry.reply_to, entry.reply_quote)
+                    return
+            show_reply = getattr(fragment, "showFieldPanelForReply", None)
+            if callable(show_reply):
+                show_reply(entry.reply_to)
+        except Exception as error:
+            self.log(f"[undo_send] reply restore error: {error}")
+
+    def _save_draft(self, entry: PendingEntry):
+        try:
+            reply_message = None
+            if entry.reply_to is not None:
+                reply_message = getattr(entry.reply_to, "messageOwner", None)
+            MediaDataController.getInstance(entry.account).saveDraft(
+                entry.peer,
+                0,
+                entry.text,
+                entry.entities,
+                reply_message,
+                False,
+                0,
+            )
+        except Exception as error:
+            self.log(f"[undo_send] draft error: {error}")
+
+    def _show_bulletin(self, entry: PendingEntry, queued: int):
+        remaining_ms = max(0, entry.deadline_ms - now_ms())
+        seconds = max(1, int(round(remaining_ms / 1000.0)))
+
+        text = localise("bulletin_text").format(seconds=seconds)
+        if queued > 1:
+            text = f"{text} · {localise('bulletin_queue').format(count=queued)}"
+
+        fragment = get_last_fragment()
+        duration = max(1000, remaining_ms)
+
+        def show():
+            try:
+                BulletinHelper.show_with_button(
+                    text,
+                    TelegramR.raw.timer_toast,
+                    localise("bulletin_undo"),
+                    lambda: self._on_undo_clicked(entry),
+                    fragment,
+                    duration,
+                )
+            except Exception:
+                try:
+                    BulletinHelper.show_with_button(
+                        text,
+                        TelegramR.raw.timer_toast,
+                        localise("bulletin_undo"),
+                        lambda: self._on_undo_clicked(entry),
+                        fragment,
+                    )
+                except Exception as error:
+                    self.log(f"[undo_send] bulletin error: {error}")
+
+        run_on_ui_thread(show)
+
+    def _safe_bulletin(self, text: str, error: bool = False):
+        def show():
+            try:
+                fragment = get_last_fragment()
+                if error:
+                    BulletinHelper.show_error(text, fragment)
+                else:
+                    BulletinHelper.show_info(text, fragment)
+            except Exception as bulletin_error:
+                self.log(f"[undo_send] bulletin error: {bulletin_error}")
+
+        run_on_ui_thread(show)

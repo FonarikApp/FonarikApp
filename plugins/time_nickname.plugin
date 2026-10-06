@@ -1,0 +1,632 @@
+r"""
+ /\_/\
+( o.o )   mishabotov
+ > ^ <
+"""
+
+import re
+import time
+from typing import Any, List, Optional, Tuple
+
+from java.lang import Integer, Long
+
+from org.telegram.messenger import MessagesController, NotificationCenter, UserConfig
+from org.telegram.tgnet import ConnectionsManager
+from org.telegram.tgnet.tl import TL_account
+
+from android_utils import run_on_ui_thread
+from base_plugin import AppEvent, BasePlugin
+from client_utils import PLUGINS_QUEUE, RequestCallback, run_on_queue
+from ui.bulletin import BulletinHelper
+from ui.settings import Divider, Header, Input, Selector, Switch, Text
+
+__id__ = "time_nickname"
+__name__ = "Time Nickname"
+__description__ = (
+    "Подставляет текущее время в имя или фамилию профиля и обновляет его "
+    "автоматически: при смене времени или по выбранному интервалу."
+)
+__author__ = "@mishabotov"
+__version__ = "1.0"
+__icon__ = ""
+
+
+DEFAULT_ENABLED = False
+DEFAULT_TEMPLATE = "{name} {time}"
+DEFAULT_TIME_FORMAT = "%H:%M"
+DEFAULT_CUSTOM_MINUTES = "2"
+
+NAME_LIMIT = 64
+MIN_UPDATE_SECONDS = 60
+BOUNDARY_SLACK_MS = 1500
+SENDING_GUARD_SECONDS = 90
+
+FIELD_FIRST_NAME = 0
+FIELD_LAST_NAME = 1
+
+INTERVAL_ITEMS = [
+    "При смене времени (авто)",
+    "Раз в минуту",
+    "Раз в 5 минут",
+    "Раз в 10 минут",
+    "Раз в 15 минут",
+    "Раз в 30 минут",
+    "Раз в час",
+    "Своё значение (минуты)",
+]
+INTERVAL_AUTO = 0
+INTERVAL_CUSTOM = 7
+INTERVAL_STEPS = {
+    1: 60,
+    2: 300,
+    3: 600,
+    4: 900,
+    5: 1800,
+    6: 3600,
+}
+
+SECOND_CODES = ("%S", "%s", "%f", "%T", "%X", "%c")
+MINUTE_CODES = ("%M", "%R")
+HOUR_CODES = ("%H", "%I", "%p", "%P", "%k", "%l")
+
+CLOCK_HOURS = ("🕛", "🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚")
+CLOCK_HALVES = ("🕧", "🕜", "🕝", "🕞", "🕟", "🕠", "🕡", "🕢", "🕣", "🕤", "🕥", "🕦")
+
+FLOOD_PATTERN = re.compile(r"FLOOD_WAIT_(\d+)")
+
+_PENDING_CALLBACKS: List[Any] = []
+
+
+def send_account_request(account: int, request: Any, callback) -> None:
+    holder: List[Any] = []
+
+    def release() -> None:
+        for item in holder:
+            try:
+                _PENDING_CALLBACKS.remove(item)
+            except ValueError:
+                pass
+        holder.clear()
+
+    def received(response: Any, error: Any) -> None:
+        try:
+            if callback is not None:
+                callback(response, error)
+        finally:
+            release()
+
+    wrapper = RequestCallback(received)
+    holder.append(wrapper)
+    _PENDING_CALLBACKS.append(wrapper)
+    try:
+        ConnectionsManager.getInstance(int(account)).sendRequest(
+            request,
+            wrapper,
+            ConnectionsManager.RequestFlagDoNotWaitFloodWait,
+        )
+    except Exception:
+        release()
+        raise
+
+
+def clock_emoji(hour: int, minute: int) -> str:
+    index = int(hour) % 12
+    if 15 <= int(minute) < 45:
+        return CLOCK_HALVES[index]
+    if int(minute) >= 45:
+        index = (index + 1) % 12
+    return CLOCK_HOURS[index]
+
+
+def error_text(error: Any) -> str:
+    if error is None:
+        return ""
+    text = getattr(error, "text", None)
+    if text:
+        return str(text)
+    return str(error)
+
+
+class TimeNicknamePlugin(BasePlugin):
+    def __init__(self):
+        super().__init__()
+        self._active = False
+        self._token = 0
+        self._flood_until = 0.0
+        self._sending_until = 0.0
+
+    def on_plugin_load(self) -> None:
+        self._active = True
+        self._flood_until = 0.0
+        if self._enabled():
+            self._ensure_binding()
+            run_on_queue(lambda: self._safe_apply(force=True), PLUGINS_QUEUE, 1500)
+        self._schedule()
+
+    def on_plugin_unload(self) -> None:
+        restore = self._enabled() and self._bool("restore_on_disable", True)
+        self._active = False
+        self._token += 1
+        if restore:
+            self._restore(notify=False)
+
+    def on_app_event(self, event_type) -> None:
+        if event_type != AppEvent.RESUME:
+            return
+        if not self._active or not self._enabled():
+            return
+        run_on_queue(lambda: self._safe_apply(force=False), PLUGINS_QUEUE)
+        self._schedule()
+
+    def create_settings(self) -> List[Any]:
+        return [
+            Header(text="Основное"),
+            Switch(
+                key="enabled",
+                text="Включить",
+                default=DEFAULT_ENABLED,
+                subtext="Время подставляется в профиль привязанного аккаунта",
+                icon="msg_contacts_time",
+                on_change=self._on_enabled_changed,
+            ),
+            Text(
+                text="Аккаунт",
+                subtext=self._binding_subtext(),
+                icon="msg_contacts",
+                on_click=self._on_rebind_click,
+            ),
+            Divider(text="Нажмите на строку, чтобы привязать плагин к текущему аккаунту."),
+            Header(text="Как выглядит имя"),
+            Selector(
+                key="target_field",
+                text="Куда подставлять время",
+                default=FIELD_FIRST_NAME,
+                items=["В имя", "В фамилию"],
+                icon="msg_edit",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="base_first_name",
+                text="Базовое имя",
+                default="",
+                subtext="Имя без времени",
+                icon="msg_contacts_name",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="base_last_name",
+                text="Базовая фамилия",
+                default="",
+                subtext="Фамилия без времени",
+                icon="msg_contacts_name",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="name_template",
+                text="Шаблон",
+                default=DEFAULT_TEMPLATE,
+                subtext="{name} — базовый текст, {time} — время, {clock} — эмодзи-часы",
+                icon="msg_text_outlined",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="time_format",
+                text="Формат времени",
+                default=DEFAULT_TIME_FORMAT,
+                subtext="strftime: %H:%M, %H:%M:%S, %d.%m %H:%M",
+                icon="msg_calendar2",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="tz_offset",
+                text="Часовой пояс",
+                default="",
+                subtext="Пусто — время устройства. Пример: 3, +5.5, -4",
+                icon="msg_language",
+                on_change=self._on_setting_changed,
+            ),
+            Divider(text=self._preview_text()),
+            Header(text="Частота обновления"),
+            Selector(
+                key="interval_mode",
+                text="Обновлять",
+                default=INTERVAL_AUTO,
+                items=INTERVAL_ITEMS,
+                icon="msg_autodelete",
+                on_change=self._on_setting_changed,
+            ),
+            Input(
+                key="custom_minutes",
+                text="Свой интервал, минут",
+                default=DEFAULT_CUSTOM_MINUTES,
+                subtext="Учитывается только в режиме «Своё значение»",
+                icon="msg_stories_timer",
+                on_change=self._on_setting_changed,
+            ),
+            Divider(
+                text=(
+                    "Авто — обновление ровно в момент смены самой мелкой единицы "
+                    "формата. Telegram не позволяет менять имя чаще раза в минуту, "
+                    "поэтому минимальный интервал — 1 минута."
+                )
+            ),
+            Header(text="Действия"),
+            Text(
+                text="Обновить сейчас",
+                icon="msg_retry",
+                accent=True,
+                on_click=self._on_update_now_click,
+            ),
+            Text(
+                text="Вернуть исходное имя",
+                icon="msg_reset",
+                red=True,
+                on_click=self._on_restore_click,
+            ),
+            Switch(
+                key="restore_on_disable",
+                text="Возвращать имя при выключении",
+                default=True,
+                subtext="Плагин вернёт базовое имя и фамилию",
+                icon="msg_replace",
+            ),
+            Divider(),
+        ]
+
+    def _on_enabled_changed(self, value: bool) -> None:
+        if value:
+            self._ensure_binding()
+            self._flood_until = 0.0
+            run_on_queue(lambda: self._safe_apply(force=True, notify=True), PLUGINS_QUEUE)
+            self._schedule()
+        else:
+            self._token += 1
+            if self._bool("restore_on_disable", True):
+                self._restore(notify=True)
+
+    def _on_setting_changed(self, value: Any) -> None:
+        if not self._enabled():
+            return
+        run_on_queue(lambda: self._safe_apply(force=True), PLUGINS_QUEUE)
+        self._schedule()
+
+    def _on_update_now_click(self, view: Any) -> None:
+        if not self._enabled():
+            BulletinHelper.show_info("Сначала включите плагин.")
+            return
+        self._flood_until = 0.0
+        run_on_queue(lambda: self._safe_apply(force=True, notify=True), PLUGINS_QUEUE)
+        self._schedule()
+
+    def _on_restore_click(self, view: Any) -> None:
+        run_on_queue(lambda: self._restore(notify=True), PLUGINS_QUEUE)
+
+    def _on_rebind_click(self, view: Any) -> None:
+        if self._bind_current_account(reload_settings=True):
+            BulletinHelper.show_success("Плагин привязан к текущему аккаунту.")
+            if self._enabled():
+                run_on_queue(lambda: self._safe_apply(force=True), PLUGINS_QUEUE)
+                self._schedule()
+        else:
+            BulletinHelper.show_error("Не удалось определить текущий аккаунт.")
+
+    def _binding_subtext(self) -> str:
+        account_id = self._int("account_id", 0)
+        if account_id <= 0:
+            return "Не привязан — будет привязан при включении"
+        if self._resolve_account() is None:
+            return f"ID {account_id} — аккаунт не найден в этом клиенте"
+        base_first = self._text("base_first_name", "")
+        base_last = self._text("base_last_name", "")
+        name = " ".join(part for part in (base_first, base_last) if part)
+        return f"{name or 'без имени'} (ID {account_id})"
+
+    def _preview_text(self) -> str:
+        first, last = self._compose_names()
+        preview = " ".join(part for part in (first, last) if part)
+        return f"Предпросмотр: {preview or '—'}"
+
+    def _text(self, key: str, default: str) -> str:
+        value = self.get_setting(key, default)
+        if value is None:
+            return default
+        return str(value)
+
+    def _int(self, key: str, default: int) -> int:
+        try:
+            return int(self.get_setting(key, default))
+        except Exception:
+            return default
+
+    def _bool(self, key: str, default: bool) -> bool:
+        value = self.get_setting(key, default)
+        if isinstance(value, bool):
+            return value
+        return bool(value)
+
+    def _enabled(self) -> bool:
+        return self._bool("enabled", DEFAULT_ENABLED)
+
+    def _tz_offset_seconds(self) -> Optional[int]:
+        raw = self._text("tz_offset", "").strip().replace(",", ".")
+        if not raw:
+            return None
+        try:
+            hours = float(raw)
+        except ValueError:
+            return None
+        if hours < -14 or hours > 14:
+            return None
+        return int(round(hours * 3600))
+
+    def _time_struct(self):
+        offset = self._tz_offset_seconds()
+        if offset is None:
+            return time.localtime()
+        return time.gmtime(time.time() + offset)
+
+    def _time_format(self) -> str:
+        value = self._text("time_format", DEFAULT_TIME_FORMAT).strip()
+        return value or DEFAULT_TIME_FORMAT
+
+    def _formatted_time(self, tm) -> str:
+        try:
+            return time.strftime(self._time_format(), tm)
+        except Exception:
+            return time.strftime(DEFAULT_TIME_FORMAT, tm)
+
+    def _compose_names(self) -> Tuple[str, str]:
+        tm = self._time_struct()
+        template = self._text("name_template", DEFAULT_TEMPLATE)
+        if not template.strip():
+            template = DEFAULT_TEMPLATE
+
+        target = self._int("target_field", FIELD_FIRST_NAME)
+        base_first = self._text("base_first_name", "").strip()
+        base_last = self._text("base_last_name", "").strip()
+        base = base_last if target == FIELD_LAST_NAME else base_first
+
+        rendered = (
+            template.replace("{name}", base)
+            .replace("{time}", self._formatted_time(tm))
+            .replace("{clock}", clock_emoji(tm.tm_hour, tm.tm_min))
+            .strip()
+        )[:NAME_LIMIT]
+
+        if target == FIELD_LAST_NAME:
+            return base_first[:NAME_LIMIT], rendered
+        return rendered, base_last[:NAME_LIMIT]
+
+    def _step_seconds(self) -> int:
+        mode = self._int("interval_mode", INTERVAL_AUTO)
+        if mode == INTERVAL_CUSTOM:
+            raw = self._text("custom_minutes", DEFAULT_CUSTOM_MINUTES).strip().replace(",", ".")
+            try:
+                minutes = float(raw)
+            except ValueError:
+                minutes = float(DEFAULT_CUSTOM_MINUTES)
+            return max(MIN_UPDATE_SECONDS, min(int(minutes * 60), 24 * 3600))
+        if mode in INTERVAL_STEPS:
+            return INTERVAL_STEPS[mode]
+
+        fmt = self._time_format()
+        if any(code in fmt for code in SECOND_CODES):
+            unit = 1
+        elif any(code in fmt for code in MINUTE_CODES):
+            unit = 60
+        elif any(code in fmt for code in HOUR_CODES):
+            unit = 3600
+        else:
+            unit = 24 * 3600
+        return max(MIN_UPDATE_SECONDS, unit)
+
+    def _next_delay_ms(self) -> int:
+        step = self._step_seconds()
+        tm = self._time_struct()
+        seconds_into_day = tm.tm_hour * 3600 + tm.tm_min * 60 + tm.tm_sec
+        if step >= 24 * 3600:
+            remain = 24 * 3600 - seconds_into_day
+        else:
+            remain = step - (seconds_into_day % step)
+        if remain <= 0:
+            remain = step
+        delay = remain * 1000 + BOUNDARY_SLACK_MS
+
+        flood_delay = int((self._flood_until - time.time()) * 1000)
+        if flood_delay > delay:
+            delay = flood_delay + BOUNDARY_SLACK_MS
+        return max(1000, delay)
+
+    def _resolve_account(self) -> Optional[int]:
+        target_id = self._int("account_id", 0)
+        if target_id <= 0:
+            return None
+        try:
+            slots = int(UserConfig.MAX_ACCOUNT_COUNT)
+        except Exception:
+            slots = 4
+        for slot in range(slots):
+            try:
+                config = UserConfig.getInstance(slot)
+                if config is None or not config.isClientActivated():
+                    continue
+                if int(config.getClientUserId()) == target_id:
+                    return slot
+            except Exception:
+                continue
+        return None
+
+    def _ensure_binding(self) -> None:
+        if self._int("account_id", 0) <= 0:
+            self._bind_current_account(reload_settings=False)
+
+    def _bind_current_account(self, reload_settings: bool) -> bool:
+        try:
+            slot = int(UserConfig.selectedAccount)
+            config = UserConfig.getInstance(slot)
+            user = config.getCurrentUser() if config is not None else None
+        except Exception:
+            user = None
+        if user is None:
+            return False
+
+        current_first = str(getattr(user, "first_name", "") or "")
+        current_last = str(getattr(user, "last_name", "") or "")
+        applied_first = self._text("applied_first_name", "")
+        applied_last = self._text("applied_last_name", "")
+        already_timed = (
+            bool(applied_first or applied_last)
+            and current_first == applied_first
+            and current_last == applied_last
+        )
+        if not already_timed:
+            self.set_setting("base_first_name", current_first)
+            self.set_setting("base_last_name", current_last)
+        self.set_setting("account_id", int(user.id), reload_settings=reload_settings)
+        return True
+
+    def _schedule(self) -> None:
+        self._token += 1
+        if not self._active or not self._enabled():
+            return
+        token = self._token
+        delay = self._next_delay_ms()
+        run_on_queue(lambda: self._tick(token), PLUGINS_QUEUE, delay)
+
+    def _tick(self, token: int) -> None:
+        if token != self._token or not self._active or not self._enabled():
+            return
+        self._safe_apply(force=False)
+        if token != self._token:
+            return
+        self._schedule()
+
+    def _safe_apply(self, force: bool = False, notify: bool = False) -> None:
+        try:
+            self._apply(force=force, notify=notify)
+        except Exception as error:
+            self.log(f"[TimeNickname] Ошибка обновления имени: {error}")
+
+    def _apply(self, force: bool, notify: bool) -> None:
+        if not self._active or not self._enabled():
+            return
+        if time.time() < self._sending_until:
+            return
+        if not force and time.time() < self._flood_until:
+            return
+
+        slot = self._resolve_account()
+        if slot is None:
+            if notify:
+                BulletinHelper.show_error("Аккаунт не привязан или недоступен.")
+            return
+
+        first, last = self._compose_names()
+        if not first.strip():
+            if notify:
+                BulletinHelper.show_error("Имя не может быть пустым — заполните базовое имя или шаблон.")
+            return
+
+        user = UserConfig.getInstance(slot).getCurrentUser()
+        if user is None:
+            return
+        current_first = str(getattr(user, "first_name", "") or "")
+        current_last = str(getattr(user, "last_name", "") or "")
+        if not force and current_first == first and current_last == last:
+            return
+
+        self._send_profile(slot, first, last, notify=notify, restoring=False)
+
+    def _restore(self, notify: bool) -> None:
+        slot = self._resolve_account()
+        if slot is None:
+            if notify:
+                BulletinHelper.show_error("Аккаунт не привязан или недоступен.")
+            return
+        first = self._text("base_first_name", "").strip()[:NAME_LIMIT]
+        last = self._text("base_last_name", "").strip()[:NAME_LIMIT]
+        if not first:
+            if notify:
+                BulletinHelper.show_error("Базовое имя пустое — нечего восстанавливать.")
+            return
+        self._send_profile(slot, first, last, notify=notify, restoring=True)
+
+    def _send_profile(
+        self,
+        slot: int,
+        first: str,
+        last: str,
+        notify: bool,
+        restoring: bool,
+    ) -> None:
+        request = TL_account.updateProfile()
+        request.flags = 3
+        request.first_name = first
+        request.last_name = last
+
+        self._sending_until = time.time() + SENDING_GUARD_SECONDS
+
+        def received(response: Any, error: Any) -> None:
+            self._sending_until = 0.0
+            if error is not None:
+                text = error_text(error)
+                match = FLOOD_PATTERN.search(text)
+                if match:
+                    wait = int(match.group(1))
+                    self._flood_until = time.time() + wait
+                    self.log(f"[TimeNickname] FLOOD_WAIT {wait}s, следующая попытка позже")
+                    if notify:
+                        BulletinHelper.show_error(f"Telegram просит подождать {wait} с.")
+                    self._schedule()
+                    return
+                self.log(f"[TimeNickname] updateProfile не выполнен: {text}")
+                if notify:
+                    BulletinHelper.show_error(f"Не удалось изменить имя: {text}")
+                return
+
+            self._flood_until = 0.0
+            try:
+                if restoring:
+                    self.set_setting("applied_first_name", "")
+                    self.set_setting("applied_last_name", "")
+                else:
+                    self.set_setting("applied_first_name", first)
+                    self.set_setting("applied_last_name", last)
+            except Exception:
+                pass
+            run_on_ui_thread(lambda: self._update_local_user(slot, first, last))
+            if notify:
+                BulletinHelper.show_success(
+                    "Имя восстановлено." if restoring else f"Имя обновлено: {first} {last}".strip()
+                )
+
+        try:
+            send_account_request(slot, request, received)
+        except Exception as error:
+            self._sending_until = 0.0
+            self.log(f"[TimeNickname] Не удалось отправить запрос: {error}")
+            if notify:
+                BulletinHelper.show_error("Не удалось отправить запрос Telegram.")
+
+    def _update_local_user(self, slot: int, first: str, last: str) -> None:
+        try:
+            config = UserConfig.getInstance(slot)
+            user = config.getCurrentUser()
+            if user is None:
+                return
+            user.first_name = first
+            user.last_name = last
+            controller = MessagesController.getInstance(slot)
+            cached = controller.getUser(Long(int(config.getClientUserId())))
+            if cached is not None:
+                cached.first_name = first
+                cached.last_name = last
+            config.saveConfig(True)
+            center = NotificationCenter.getInstance(slot)
+            center.postNotificationName(NotificationCenter.mainUserInfoChanged)
+            center.postNotificationName(
+                NotificationCenter.updateInterfaces,
+                Integer(int(MessagesController.UPDATE_MASK_NAME)),
+            )
+        except Exception as error:
+            self.log(f"[TimeNickname] Локальное обновление профиля не удалось: {error}")
