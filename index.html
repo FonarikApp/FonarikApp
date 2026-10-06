@@ -78,11 +78,109 @@ linear-gradient(180deg,#141414,#050505);animation:wd 30s ease-in-out infinite al
 .btn{width:100%;padding:16px;border-radius:14px;border:none;background:#fff;color:#0a0a0a;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;transition:transform .12s var(--e)}
 .btn:active{transform:scale(.97)}
 .btn.ghost{background:var(--glass);color:var(--tx);border:1px solid var(--bd2)}
+
+/* ============ ПРИВЕТСТВИЕ ============ */
+#splash{
+  position:fixed;
+  inset:0;
+  z-index:2000;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:30px;
+  text-align:center;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.10) 0, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.06) 0, transparent 50%),
+    linear-gradient(180deg, #141414, #050505);
+  transition: opacity .6s ease, transform .6s ease;
+}
+#splash.hide{
+  opacity:0;
+  transform:scale(1.05);
+  pointer-events:none;
+}
+.splash-icon{
+  font-size:84px;
+  margin-bottom:24px;
+  animation:splashFloat 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(255,216,77,0.5));
+}
+@keyframes splashFloat{
+  0%,100%{transform:translateY(0) rotate(-3deg)}
+  50%{transform:translateY(-12px) rotate(3deg)}
+}
+.splash-title{
+  font-size:24px;
+  font-weight:900;
+  letter-spacing:-.5px;
+  margin-bottom:14px;
+  line-height:1.3;
+  background:linear-gradient(135deg,#ffd84d,#ff9500);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  opacity:0;
+  animation:fadeUp .6s ease .2s forwards;
+  max-width:340px;
+}
+.splash-text{
+  font-size:15px;
+  font-weight:500;
+  color:rgba(255,255,255,0.7);
+  line-height:1.6;
+  max-width:340px;
+  opacity:0;
+  animation:fadeUp .6s ease .4s forwards;
+}
+.splash-thanks{
+  margin-top:20px;
+  font-size:13px;
+  font-weight:700;
+  color:rgba(255,216,77,0.9);
+  opacity:0;
+  animation:fadeUp .6s ease .6s forwards;
+}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.splash-loader{
+  margin-top:36px;
+  width:48px;
+  height:4px;
+  border-radius:2px;
+  background:rgba(255,255,255,0.1);
+  overflow:hidden;
+  opacity:0;
+  animation:fadeUp .6s ease .8s forwards;
+}
+.splash-loader-fill{
+  height:100%;
+  width:0%;
+  background:rgba(255,255,255,0.85);
+  border-radius:2px;
+  animation:splashLoad 2s ease-out .8s forwards;
+}
+@keyframes splashLoad{
+  from{width:0%}
+  to{width:100%}
+}
 </style>
 </head>
 <body>
 
 <div id="wall"></div>
+
+<!-- ПРИВЕТСТВИЕ -->
+<div id="splash">
+  <div class="splash-icon">🟡</div>
+  <div class="splash-title">Добро пожаловать в FonarikApp!</div>
+  <div class="splash-text">Здесь ты найдёшь лучшие обои, плагины и темы для Telegram и HyperOS.</div>
+  <div class="splash-thanks">💛 Спасибо, что выбрал именно наш проект</div>
+  <div class="splash-loader"><div class="splash-loader-fill"></div></div>
+</div>
 
 <div id="header">
   <div id="logo"><div class="dot"></div>FonarikApp</div>
@@ -176,7 +274,6 @@ function renderSubCats(){
     $("#subcats").classList.remove("show");
     return;
   }
-  // Считаем обои по цветам
   const counts = {};
   DATA.wallpapers.forEach(w => {
     const c = w.category || "other";
@@ -309,6 +406,30 @@ async function loadData(){
       </div>`;
   }
 }
+
+/* ============ ПРИВЕТСТВИЕ ============ */
+(function initSplash(){
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+
+  let hello = "Добро пожаловать в FonarikApp!";
+  try {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+      const u = window.Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.first_name) {
+        hello = "Привет, " + u.first_name + "! Добро пожаловать!";
+      }
+    }
+  } catch(e){}
+
+  const titleEl = splash.querySelector(".splash-title");
+  if (titleEl) titleEl.textContent = hello;
+
+  setTimeout(()=>{
+    splash.classList.add("hide");
+    setTimeout(()=>splash.remove(), 700);
+  }, 2500);
+})();
 
 loadData();
 </script>
