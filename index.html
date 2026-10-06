@@ -39,14 +39,22 @@ linear-gradient(180deg,#141414,#050505);animation:wd 30s ease-in-out infinite al
 .cat{padding:8px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .12s var(--e)}
 .cat:active{transform:scale(.94)}
 .cat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
+.cat .cnt{opacity:.6;margin-left:4px;font-size:11px}
+#subcats{display:none;gap:6px;padding:8px 14px;overflow-x:auto;background:rgba(0,0,0,0.2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
+#subcats.show{display:flex}
+#subcats::-webkit-scrollbar{display:none}
+.subcat{padding:7px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .12s var(--e)}
+.subcat:active{transform:scale(.94)}
+.subcat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
+.subcat .cnt{opacity:.6;margin-left:4px;font-size:10px}
 #content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:none}
 #content::-webkit-scrollbar{display:none}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .12s var(--e);animation:cIn .35s var(--e) backwards}
 @keyframes cIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .card:active{transform:scale(.97)}
-.card .prev{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden}
-.card .prev img{width:100%;height:100%;object-fit:cover}
+.card .prev{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;position:relative}
+.card .prev img{width:100%;height:100%;object-fit:cover;display:block}
 .card .info{padding:10px 12px}
 .card .name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .sub{font-size:11px;color:var(--tx3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -86,6 +94,7 @@ linear-gradient(180deg,#141414,#050505);animation:wd 30s ease-in-out infinite al
 </div>
 
 <div id="cats"></div>
+<div id="subcats"></div>
 
 <div id="content">
   <div class="empty">
@@ -115,15 +124,23 @@ try {
 
 const $ = s => document.querySelector(s);
 let DATA = { themes: [], wallpapers: [], plugins: [] };
-let CAT = "all";
+let MAIN_CAT = "all";
+let SUB_CAT = "all";
 let QUERY = "";
 
-const CATS = [
-  { k:"all",       n:"📦 Всё" },
-  { k:"themes",    n:"🎨 Темы" },
-  { k:"wallpapers",n:"🖼️ Обои" },
-  { k:"plugins",   n:"🔌 Плагины" },
-];
+const COLORS = {
+  red:    { n: "🔴 Красные",   v: "red" },
+  black:  { n: "⚫ Чёрные",    v: "black" },
+  blue:   { n: "🔵 Синие",     v: "blue" },
+  green:  { n: "🟢 Зелёные",   v: "green" },
+  white:  { n: "⚪ Белые",     v: "white" },
+  purple: { n: "🟣 Фиолетовые", v: "purple" },
+  yellow: { n: "🟡 Жёлтые",    v: "yellow" },
+  orange: { n: "🟠 Оранжевые", v: "orange" },
+  gradient:{ n: "🌈 Градиент", v: "gradient" },
+  dark:   { n: "🌑 Тёмные",    v: "dark" },
+  light:  { n: "☀️ Светлые",   v: "light" },
+};
 
 function toast(m){
   const t = $("#toast");
@@ -134,11 +151,55 @@ function toast(m){
 }
 
 function renderCats(){
-  $("#cats").innerHTML = CATS.map(c =>
-    `<div class="cat ${CAT===c.k?'active':''}" data-k="${c.k}">${c.n}</div>`
+  const cats = [
+    { k:"all",       n:"📦 Всё",     cnt: DATA.themes.length + DATA.wallpapers.length + DATA.plugins.length },
+    { k:"themes",    n:"🎨 Темы",    cnt: DATA.themes.length },
+    { k:"wallpapers",n:"🖼️ Обои",    cnt: DATA.wallpapers.length },
+    { k:"plugins",   n:"🔌 Плагины", cnt: DATA.plugins.length },
+  ];
+  $("#cats").innerHTML = cats.map(c =>
+    `<div class="cat ${MAIN_CAT===c.k?'active':''}" data-k="${c.k}">${c.n}<span class="cnt">(${c.cnt})</span></div>`
   ).join("");
-  document.querySelectorAll(".cat").forEach(el => {
-    el.onclick = () => { CAT = el.dataset.k; renderCats(); renderList(); };
+  document.querySelectorAll("#cats .cat").forEach(el => {
+    el.onclick = () => {
+      MAIN_CAT = el.dataset.k;
+      SUB_CAT = "all";
+      renderCats();
+      renderSubCats();
+      renderList();
+    };
+  });
+}
+
+function renderSubCats(){
+  if (MAIN_CAT !== "wallpapers") {
+    $("#subcats").classList.remove("show");
+    return;
+  }
+  // Считаем обои по цветам
+  const counts = {};
+  DATA.wallpapers.forEach(w => {
+    const c = w.category || "other";
+    counts[c] = (counts[c] || 0) + 1;
+  });
+  const items = [{ k:"all", n:"Все цвета", cnt: DATA.wallpapers.length }];
+  Object.keys(counts).forEach(c => {
+    if (COLORS[c]) {
+      items.push({ k:c, n: COLORS[c].n, cnt: counts[c] });
+    } else {
+      items.push({ k:c, n: c, cnt: counts[c] });
+    }
+  });
+  $("#subcats").innerHTML = items.map(it =>
+    `<div class="subcat ${SUB_CAT===it.k?'active':''}" data-k="${it.k}">${it.n}<span class="cnt">(${it.cnt})</span></div>`
+  ).join("");
+  $("#subcats").classList.add("show");
+  document.querySelectorAll("#subcats .subcat").forEach(el => {
+    el.onclick = () => {
+      SUB_CAT = el.dataset.k;
+      renderSubCats();
+      renderList();
+    };
   });
 }
 
@@ -146,13 +207,16 @@ function renderList(){
   const content = $("#content");
   let items = [];
 
-  if (CAT === "all" || CAT === "themes") {
+  if (MAIN_CAT === "all" || MAIN_CAT === "themes") {
     DATA.themes.forEach(t => items.push({ type:"theme", ...t }));
   }
-  if (CAT === "all" || CAT === "wallpapers") {
-    DATA.wallpapers.forEach(w => items.push({ type:"wallpaper", ...w }));
+  if (MAIN_CAT === "all" || MAIN_CAT === "wallpapers") {
+    DATA.wallpapers.forEach(w => {
+      if (SUB_CAT !== "all" && w.category !== SUB_CAT) return;
+      items.push({ type:"wallpaper", ...w });
+    });
   }
-  if (CAT === "all" || CAT === "plugins") {
+  if (MAIN_CAT === "all" || MAIN_CAT === "plugins") {
     DATA.plugins.forEach(p => items.push({ type:"plugin", ...p }));
   }
 
@@ -176,7 +240,7 @@ function renderList(){
 
   content.innerHTML = `<div class="grid">${items.map((it, i) => {
     const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
-    const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
+    const prev = it.preview ? `<img src="${it.preview}" loading="lazy" onerror="this.style.display='none'">` : ico;
     return `<div class="card" data-i="${i}" style="animation-delay:${i*30}ms">
       <div class="prev">${prev}</div>
       <div class="info">
@@ -194,13 +258,15 @@ function renderList(){
 function openItem(it){
   const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
   const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
+  const catName = COLORS[it.category]?.n || it.category || "";
   $("#mContent").innerHTML = `
     <div class="mPrev">${prev}</div>
     <div class="mTitle">${it.name || "Без названия"}</div>
     ${it.author ? `<div class="mRow"><span>Автор</span><span class="v">${it.author}</span></div>` : ""}
-    ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
+    ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
     ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
     ${it.size ? `<div class="mRow"><span>Размер</span><span class="v">${it.size}</span></div>` : ""}
+    ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
     <button class="btn" id="dl">📥 Скачать</button>
     <button class="btn ghost" id="close">Закрыть</button>
   `;
@@ -231,19 +297,20 @@ async function loadData(){
     if (!DATA.themes) DATA.themes = [];
     if (!DATA.wallpapers) DATA.wallpapers = [];
     if (!DATA.plugins) DATA.plugins = [];
+    renderCats();
+    renderSubCats();
     renderList();
   } catch(e) {
     $("#content").innerHTML = `
       <div class="empty">
         <div class="big">🟡</div>
         <div class="ttl">FonarikApp</div>
-        <div class="sub">Скоро здесь появится каталог тем, обоев и плагинов</div>
+        <div class="sub">Скоро здесь появится каталог</div>
       </div>`;
   }
 }
 
-renderCats();
 loadData();
 </script>
 </body>
-  </html>
+</html>
