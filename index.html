@@ -427,4 +427,221 @@ function renderList(){
 function openItem(it){
   const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
   const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
-  const cat
+  const catName = COLORS[it.category]?.n || it.category || "";
+  const isPlugin = it.type === "plugin";
+
+  $("#mContent").innerHTML = `
+    <div class="mPrev">${prev}</div>
+    <div class="mTitle">${it.name || "—"}</div>
+    ${it.author ? `<div class="mRow"><span>Автор</span><span class="v">${it.author}</span></div>` : ""}
+    ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
+    ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
+    ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
+    ${isPlugin ? `<button class="btn" id="install">📥 Установить</button>` : ""}
+    <button class="btn ghost" id="dl">💾 Скачать</button>
+    <button class="btn ghost" id="close">Закрыть</button>
+  `;
+
+  if (isPlugin) {
+    $("#install").onclick = () => installViaBot(it);
+  }
+  $("#dl").onclick = () => {
+    if (it.file) { window.open(it.file, "_blank"); toast("Открываю файл"); }
+    else toast("Файл не указан");
+  };
+  $("#close").onclick = () => $("#modal").classList.remove("show");
+  $("#modal").classList.add("show");
+}
+
+async function installViaBot(it){
+  if (!it.file) { toast("Файл не указан"); return; }
+  if (!USER_ID) { toast("Не удалось получить ID"); return; }
+
+  $("#modal").classList.remove("show");
+  const sp = document.getElementById("installSplash");
+  sp.querySelector(".install-title").textContent = "Отправляю...";
+  sp.querySelector(".install-text").innerHTML = "Файл готовится к отправке.";
+  sp.querySelector(".install-hint").textContent = "Подожди...";
+  sp.classList.add("show");
+
+  let ok = false;
+  let errText = "";
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 30000);
+    const res = await fetch(BOT_URL + "/install", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: USER_ID,
+        file: it.file,
+        name: it.name || "Файл",
+        type: it.type || "plugin"
+      }),
+      signal: ctrl.signal
+    });
+    clearTimeout(to);
+    const data = await res.json();
+    ok = data.ok === true;
+    if (!ok) errText = data.error || "unknown";
+  } catch(e) {
+    errText = e.message;
+  }
+
+  if (ok) {
+    sp.querySelector(".install-title").textContent = "Файл отправлен";
+    sp.querySelector(".install-text").innerHTML = "Открой бота — там будет файл.";
+    sp.querySelector(".install-hint").textContent = "Закрытие через 2 сек";
+  } else {
+    sp.querySelector(".install-icon").textContent = "✕";
+    sp.querySelector(".install-title").textContent = "Ошибка";
+    sp.querySelector(".install-text").innerHTML = "Не удалось отправить.<br>Попробуй позже.";
+    sp.querySelector(".install-hint").textContent = errText;
+  }
+
+  setTimeout(() => {
+    sp.classList.remove("show");
+    setTimeout(() => {
+      try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); } catch(e){}
+    }, 300);
+  }, 2000);
+}
+
+function triggerRage(){
+  const screen = document.getElementById("userScreen");
+  if (!screen) return;
+
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const un = tg && tg.initDataUnsafe ? tg.initDataUnsafe : {};
+  const u = un.user || {};
+  const chat = un.chat || {};
+
+  const rows = [];
+
+  function add(section){ rows.push(`<div class="userSection">${section}</div>`); }
+  function row(k, v){
+    const val = (v === undefined || v === null || v === "") ? "—" : v;
+    rows.push(`<div class="userRow"><span>${k}</span><span>${val}</span></div>`);
+  }
+
+  add("User");
+  row("id", u.id);
+  row("first_name", u.first_name);
+  row("last_name", u.last_name);
+  row("username", u.username ? "@" + u.username : "—");
+  row("language_code", u.language_code);
+  row("is_premium", u.is_premium ? "true" : "false");
+  row("is_bot", u.is_bot ? "true" : "false");
+  row("photo_url", u.photo_url);
+  row("added_to_attachment_menu", u.added_to_attachment_menu ? "true" : "false");
+  row("allows_write_to_pm", u.allows_write_to_pm ? "true" : "false");
+
+  if (chat && chat.id) {
+    add("Chat");
+    row("id", chat.id);
+    row("type", chat.type);
+    row("title", chat.title);
+    row("username", chat.username);
+    row("photo_url", chat.photo_url);
+  }
+
+  add("WebApp");
+  row("platform", tg && tg.platform);
+  row("version", tg && tg.version);
+  row("colorScheme", tg && tg.colorScheme);
+  row("viewportHeight", tg && tg.viewportHeight);
+  row("viewportStableHeight", tg && tg.viewportStableHeight);
+  row("headerColor", tg && tg.headerColor);
+  row("backgroundColor", tg && tg.backgroundColor);
+  row("bottomBarColor", tg && tg.bottomBarColor);
+  row("isExpanded", tg && tg.isExpanded ? "true" : "false");
+  row("isFullscreen", tg && tg.isFullscreen ? "true" : "false");
+  row("isClosing", tg && tg.isClosing ? "true" : "false");
+  row("isActive", tg && tg.isActive ? "true" : "false");
+
+  const tp = tg && tg.themeParams ? tg.themeParams : {};
+  if (Object.keys(tp).length) {
+    add("Theme");
+    Object.keys(tp).forEach(k => row(k, tp[k]));
+  }
+
+  add("InitData");
+  row("auth_date", un.auth_date);
+  row("hash", un.hash);
+  row("initData length", tg && tg.initData ? tg.initData.length + " chars" : "—");
+
+  add("Browser");
+  row("userAgent", navigator.userAgent);
+  row("language", navigator.language);
+  row("platform", navigator.platform);
+  row("cookieEnabled", navigator.cookieEnabled ? "true" : "false");
+  row("onLine", navigator.onLine ? "true" : "false");
+  row("screen", screen.width + "×" + screen.height);
+  row("window", window.innerWidth + "×" + window.innerHeight);
+  row("devicePixelRatio", window.devicePixelRatio);
+  row("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+  row("time", new Date().toString());
+  row("url", location.href);
+  row("referrer", document.referrer || "—");
+
+  document.getElementById("userRows").innerHTML = rows.join("");
+  document.getElementById("uTime").textContent = new Date().toTimeString().slice(0,8);
+  screen.classList.add("show");
+
+  document.getElementById("uClose").onclick = () => {
+    screen.classList.remove("show");
+  };
+
+  try { if (navigator.vibrate) navigator.vibrate(50); } catch(e){}
+}
+
+$("#mBg").onclick = () => $("#modal").classList.remove("show");
+
+let searchTimer = null;
+$("#search").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    QUERY = e.target.value.trim();
+    renderList();
+  }, 150);
+});
+
+async function loadData(){
+  const content = $("#content");
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch("data.json?t=" + Date.now(), { signal: ctrl.signal });
+    clearTimeout(to);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    DATA = await r.json();
+    if (!DATA.themes) DATA.themes = [];
+    if (!DATA.wallpapers) DATA.wallpapers = [];
+    if (!DATA.plugins) DATA.plugins = [];
+    renderCats();
+    renderSubCats();
+    renderList();
+  } catch(e) {
+    content.innerHTML = `
+      <div class="empty">
+        <div class="big">⚠️</div>
+        <div class="ttl">Не удалось загрузить</div>
+        <div class="sub">Проверь интернет и попробуй снова</div>
+        <button class="btn" onclick="location.reload()" style="max-width:240px;margin:20px auto 0">Повторить</button>
+      </div>`;
+  }
+}
+
+(function initSplash(){
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  setTimeout(()=>{
+    splash.classList.add("hide");
+    setTimeout(()=>splash.remove(), 700);
+  }, 2500);
+})();
+
+loadData();
+</script>
+</body>
+</html>
