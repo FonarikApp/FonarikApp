@@ -133,9 +133,49 @@ animation:wd 30s ease-in-out infinite alternate;will-change:transform}
 .install-text{font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:320px;font-weight:500}
 .install-hint{font-size:12px;color:rgba(93,255,149,0.9);margin-top:8px;font-weight:700}
 
-#rageScreen{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;font-size:44px;font-weight:900;letter-spacing:-1.5px;text-align:center;padding:30px;line-height:1.2;text-transform:uppercase;animation:rageFlash .15s steps(1) infinite}
-#rageScreen.show{display:flex}
-@keyframes rageFlash{0%,100%{background:#ff0000;color:#fff}50%{background:#fff;color:#ff0000}}
+/* СЕКРЕТНЫЙ ЭКРАН */
+#userScreen{
+  position:fixed;inset:0;z-index:9999;
+  display:none;align-items:center;justify-content:center;
+  padding:16px;
+  background:rgba(0,0,0,0.97);
+  backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
+}
+#userScreen.show{display:flex}
+#userScreen::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle, rgba(93,255,149,0.06) 1px, transparent 1px);
+  background-size:16px 16px;
+  pointer-events:none;
+}
+.userCard{
+  position:relative;
+  width:100%;max-width:480px;max-height:90vh;
+  background:rgba(0,10,5,0.9);
+  border:1px solid rgba(93,255,149,0.3);
+  border-radius:16px;
+  padding:18px;
+  overflow-y:auto;
+  box-shadow:0 0 40px rgba(93,255,149,0.2),inset 0 0 40px rgba(93,255,149,0.05);
+  animation:cardIn .5s var(--spring);
+  scrollbar-width:none;
+}
+.userCard::-webkit-scrollbar{display:none}
+@keyframes cardIn{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.userHeader{display:flex;align-items:center;gap:10px;padding-bottom:12px;margin-bottom:8px;border-bottom:1px solid rgba(93,255,149,0.2)}
+.userDot{width:10px;height:10px;border-radius:50%;background:#5dff95;box-shadow:0 0 12px rgba(93,255,149,0.9);animation:dotBlink 1.5s ease-in-out infinite}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.userTitle{flex:1;font-size:13px;font-weight:800;letter-spacing:2px;color:#5dff95;font-family:'Courier New',monospace;text-transform:uppercase}
+.userClose{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;cursor:pointer;transition:background .2s}
+.userClose:active{background:rgba(255,255,255,0.2)}
+.userSub{font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(93,255,149,0.5);font-family:'Courier New',monospace;text-transform:uppercase;margin-bottom:16px}
+.userSection{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#5dff95;margin:18px 0 8px;padding-left:8px;border-left:2px solid #5dff95;font-family:'Courier New',monospace}
+.userRow{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;margin-bottom:4px;background:rgba(93,255,149,0.03);border:1px solid rgba(93,255,149,0.1);border-radius:6px;font-size:11px;font-family:'Courier New',monospace}
+.userRow span:first-child{color:rgba(93,255,149,0.6);flex-shrink:0;font-weight:700}
+.userRow span:last-child{color:#fff;font-weight:700;text-align:right;word-break:break-word;max-width:65%}
+.userFooter{display:flex;justify-content:space-between;margin-top:18px;padding-top:12px;border-top:1px solid rgba(93,255,149,0.2);font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(93,255,149,0.5);font-family:'Courier New',monospace}
+.userFooter span:last-child{color:#5dff95;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -161,7 +201,21 @@ animation:wd 30s ease-in-out infinite alternate;will-change:transform}
   <div class="install-hint">Закрытие через 2 сек</div>
 </div>
 
-<div id="rageScreen">СМЕРТЬ ХЕЙТЕРАМ!</div>
+<div id="userScreen">
+  <div class="userCard">
+    <div class="userHeader">
+      <div class="userDot"></div>
+      <div class="userTitle">SYSTEM DATA ACCESS</div>
+      <div class="userClose" id="uClose">✕</div>
+    </div>
+    <div class="userSub">Данные клиента · Level 9 clearance</div>
+    <div id="userRows"></div>
+    <div class="userFooter">
+      <span id="uTime">--:--:--</span>
+      <span>SECURE CONNECTION</span>
+    </div>
+  </div>
+</div>
 
 <div id="header">
   <div id="logo"><div class="dot"></div><span>FonarikApp</span></div>
@@ -373,148 +427,4 @@ function renderList(){
 function openItem(it){
   const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
   const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
-  const catName = COLORS[it.category]?.n || it.category || "";
-  const isPlugin = it.type === "plugin";
-
-  $("#mContent").innerHTML = `
-    <div class="mPrev">${prev}</div>
-    <div class="mTitle">${it.name || "—"}</div>
-    ${it.author ? `<div class="mRow"><span>Автор</span><span class="v">${it.author}</span></div>` : ""}
-    ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
-    ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
-    ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
-    ${isPlugin ? `<button class="btn" id="install">📥 Установить</button>` : ""}
-    <button class="btn ghost" id="dl">💾 Скачать</button>
-    <button class="btn ghost" id="close">Закрыть</button>
-  `;
-
-  if (isPlugin) {
-    $("#install").onclick = () => installViaBot(it);
-  }
-  $("#dl").onclick = () => {
-    if (it.file) { window.open(it.file, "_blank"); toast("Открываю файл"); }
-    else toast("Файл не указан");
-  };
-  $("#close").onclick = () => $("#modal").classList.remove("show");
-  $("#modal").classList.add("show");
-}
-
-async function installViaBot(it){
-  if (!it.file) { toast("Файл не указан"); return; }
-  if (!USER_ID) { toast("Не удалось получить ID"); return; }
-
-  $("#modal").classList.remove("show");
-  const sp = document.getElementById("installSplash");
-  sp.querySelector(".install-title").textContent = "Отправляю...";
-  sp.querySelector(".install-text").innerHTML = "Файл готовится к отправке.";
-  sp.querySelector(".install-hint").textContent = "Подожди...";
-  sp.classList.add("show");
-
-  let ok = false;
-  let errText = "";
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 30000);
-    const res = await fetch(BOT_URL + "/install", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: USER_ID,
-        file: it.file,
-        name: it.name || "Файл",
-        type: it.type || "plugin"
-      }),
-      signal: ctrl.signal
-    });
-    clearTimeout(to);
-    const data = await res.json();
-    ok = data.ok === true;
-    if (!ok) errText = data.error || "unknown";
-  } catch(e) {
-    errText = e.message;
-  }
-
-  if (ok) {
-    sp.querySelector(".install-title").textContent = "Файл отправлен";
-    sp.querySelector(".install-text").innerHTML = "Открой бота — там будет файл.";
-    sp.querySelector(".install-hint").textContent = "Закрытие через 2 сек";
-  } else {
-    sp.querySelector(".install-icon").textContent = "✕";
-    sp.querySelector(".install-title").textContent = "Ошибка";
-    sp.querySelector(".install-text").innerHTML = "Не удалось отправить.<br>Попробуй позже.";
-    sp.querySelector(".install-hint").textContent = errText;
-  }
-
-  setTimeout(() => {
-    sp.classList.remove("show");
-    setTimeout(() => {
-      try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); } catch(e){}
-    }, 300);
-  }, 2000);
-}
-
-function triggerRage(){
-  const rage = document.getElementById("rageScreen");
-  if (!rage) return;
-  rage.classList.add("show");
-  try { if (navigator.vibrate) navigator.vibrate([100,50,100,50,100]); } catch(e){}
-  setTimeout(() => {
-    rage.classList.remove("show");
-    MAIN_CAT = "all";
-    SUB_CAT = "all";
-    renderCats();
-    renderSubCats();
-    renderList();
-  }, 10000);
-}
-
-$("#mBg").onclick = () => $("#modal").classList.remove("show");
-
-let searchTimer = null;
-$("#search").addEventListener("input", e => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    QUERY = e.target.value.trim();
-    renderList();
-  }, 150);
-});
-
-async function loadData(){
-  const content = $("#content");
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 15000);
-    const r = await fetch("data.json?t=" + Date.now(), { signal: ctrl.signal });
-    clearTimeout(to);
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    DATA = await r.json();
-    if (!DATA.themes) DATA.themes = [];
-    if (!DATA.wallpapers) DATA.wallpapers = [];
-    if (!DATA.plugins) DATA.plugins = [];
-    renderCats();
-    renderSubCats();
-    renderList();
-  } catch(e) {
-    content.innerHTML = `
-      <div class="empty">
-        <div class="big">⚠️</div>
-        <div class="ttl">Не удалось загрузить</div>
-        <div class="sub">Проверь интернет и попробуй снова</div>
-        <button class="btn" onclick="location.reload()" style="max-width:240px;margin:20px auto 0">Повторить</button>
-      </div>`;
-  }
-}
-
-(function initSplash(){
-  const splash = document.getElementById("splash");
-  if (!splash) return;
-  setTimeout(()=>{
-    splash.classList.add("hide");
-    setTimeout(()=>splash.remove(), 700);
-  }, 2500);
-})();
-
-loadData();
-</script>
-</body>
-</html>
+  const cat
