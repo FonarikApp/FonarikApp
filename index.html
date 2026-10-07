@@ -1,10 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>FonarikApp</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.06);
+  --glass2:rgba(255,255,255,0.10);
+  --glass3:rgba(255,255,255,0.14);
+  --bd:rgba(255,255,255,0.10);
+  --bd2:rgba(255,255,255,0.18);
+  --tx:#fff;
+  --tx2:rgba(255,255,255,0.6);
+  --tx3:rgba(255,255,255,0.35);
+  --blur:blur(40px) saturate(120%);
+  --e:cubic-bezier(.22,1,.36,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;font-family:-apple-system,'SF Pro Display','Segoe UI',Roboto,sans-serif}
+html,body{height:100%;overflow:hidden;background:#0a0a0a;color:var(--tx);overscroll-behavior:none}
+body{display:flex;flex-direction:column}
+
+#wall{position:fixed;inset:-5%;z-index:-2;background:
+radial-gradient(circle at 30% 20%,rgba(255,255,255,0.08) 0,transparent 50%),
+radial-gradient(circle at 70% 80%,rgba(255,255,255,0.05) 0,transparent 50%),
+linear-gradient(180deg,#141414,#050505);animation:wd 30s ease-in-out infinite alternate;will-change:transform}
+@keyframes wd{0%{transform:scale(1.05)}100%{transform:scale(1.1) translate(-1%,-.5%)}}
+
+#header{padding:14px 18px;display:flex;align-items:center;gap:12px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);z-index:10}
+#logo{font-size:19px;font-weight:900;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
+#logo .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ffd84d,#ff9500);box-shadow:0 0 12px rgba(255,216,77,0.6);animation:dotPulse 2s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.badge{margin-left:auto;font-size:10px;font-weight:800;padding:5px 12px;border-radius:20px;background:var(--glass2);border:1px solid var(--bd2);color:var(--tx2);letter-spacing:1px}
+
+#searchBox{padding:10px 14px;background:rgba(0,0,0,0.3);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd)}
+#search{width:100%;padding:12px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--bd);color:var(--tx);font-size:14px;outline:none;transition:border-color .2s var(--e),background .2s}
+#search:focus{border-color:var(--bd2);background:var(--glass2)}
+#search::placeholder{color:var(--tx3)}
+
+#cats{display:flex;gap:6px;padding:10px 14px;overflow-x:auto;background:rgba(0,0,0,0.3);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
+#cats::-webkit-scrollbar{display:none}
+.cat{padding:8px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .18s var(--spring),background .2s}
+.cat:active{transform:scale(.9)}
+.cat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
+.cat .cnt{opacity:.6;margin-left:4px;font-size:11px}
+
+#subcats{display:none;gap:6px;padding:8px 14px;overflow-x:auto;background:rgba(0,0,0,0.2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
+#subcats.show{display:flex}
+#subcats::-webkit-scrollbar{display:none}
+.subcat{padding:7px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .18s var(--spring),background .2s}
+.subcat:active{transform:scale(.9)}
+.subcat.active{background:var(--glass3);border-color:var(--bd2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25)}
+.subcat .cnt{opacity:.6;margin-left:4px;font-size:10px}
+
+#content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#content::-webkit-scrollbar{display:none}
+
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .2s var(--spring),border-color .2s,box-shadow .2s;animation:cIn .4s var(--e) backwards;will-change:transform;contain:layout style paint}
+@keyframes cIn{from{opacity:0;transform:translateY(14px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card:active{transform:scale(.94);border-color:var(--bd2);box-shadow:0 0 20px rgba(255,255,255,0.1)}
+.card .prev{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;position:relative}
+.card .prev img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s var(--e)}
+.card:active .prev img{transform:scale(1.05)}
+.card .info{padding:10px 12px}
+.card .name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .sub{font-size:11px;color:var(--tx3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.empty{text-align:center;padding:60px 20px;color:var(--tx3)}
+.empty .big{font-size:64px;margin-bottom:14px;animation:emptyFloat 3s ease-in-out infinite}
+@keyframes emptyFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.empty .ttl{font-size:16px;font-weight:700;color:var(--tx)}
+.empty .sub{font-size:13px;margin-top:8px}
+
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--glass2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s var(--e),transform .25s var(--spring);pointer-events:none;z-index:999;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2),0 12px 32px rgba(0,0,0,0.5);max-width:90%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+#modal{position:fixed;inset:0;z-index:500;display:none;align-items:flex-end;justify-content:center}
+#modal.show{display:flex}
+#mBg{position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;transition:opacity .3s var(--e)}
+#modal.show #mBg{opacity:1}
+#mSheet{position:relative;width:100%;max-width:540px;background:rgba(20,20,20,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-bottom:none;border-radius:28px 28px 0 0;padding:20px 20px 30px;transform:translateY(100%);transition:transform .4s var(--spring);max-height:85vh;overflow-y:auto;will-change:transform}
+#modal.show #mSheet{transform:translateY(0)}
+.handle{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,0.3);margin:0 auto 16px}
+.mTitle{font-size:20px;font-weight:800;margin-bottom:14px;text-align:center;animation:fadeUp .4s var(--e) backwards;animation-delay:.1s}
+.mPrev{width:100%;aspect-ratio:9/16;max-height:340px;border-radius:16px;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:16px;overflow:hidden;animation:fadeUp .4s var(--e) backwards;animation-delay:.05s}
+.mPrev img{width:100%;height:100%;object-fit:contain}
+.mRow{display:flex;justify-content:space-between;padding:12px 14px;background:var(--glass);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:13px;font-weight:600;animation:fadeUp .4s var(--e) backwards;animation-delay:.15s}
+.mRow .v{color:var(--tx2)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.btn{width:100%;padding:16px;border-radius:14px;border:none;background:#fff;color:#0a0a0a;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;transition:transform .15s var(--spring);position:relative;overflow:hidden;animation:fadeUp .4s var(--e) backwards;animation-delay:.2s}
+.btn:active{transform:scale(.95)}
+.btn.ghost{background:var(--glass);color:var(--tx);border:1px solid var(--bd2)}
+.btn.ghost:active{background:var(--glass2)}
+
+.ripple{position:absolute;border-radius:50%;background:rgba(0,0,0,0.15);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none}
+.btn.ghost .ripple{background:rgba(255,255,255,0.25)}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+
+/* ПРИВЕТСТВИЕ */
+#splash{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,0.10) 0,transparent 50%),radial-gradient(circle at 70% 80%,rgba(255,255,255,0.06) 0,transparent 50%),linear-gradient(180deg,#141414,#050505);transition:opacity .6s ease,transform .6s ease}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
+.splash-icon{font-size:84px;margin-bottom:24px;animation:splashFloat 2.5s ease-in-out infinite;filter:drop-shadow(0 0 30px rgba(255,216,77,0.5))}
+@keyframes splashFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)}}
+.splash-title{font-size:24px;font-weight:900;letter-spacing:-.5px;margin-bottom:14px;line-height:1.3;background:linear-gradient(135deg,#ffd84d,#ff9500);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:fadeUp .6s ease .2s forwards;max-width:340px}
+.splash-text{font-size:15px;font-weight:500;color:rgba(255,255,255,0.7);line-height:1.6;max-width:340px;opacity:0;animation:fadeUp .6s ease .4s forwards}
+.splash-thanks{margin-top:20px;font-size:13px;font-weight:700;color:rgba(255,216,77,0.9);opacity:0;animation:fadeUp .6s ease .6s forwards}
+.splash-loader{margin-top:36px;width:48px;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;opacity:0;animation:fadeUp .6s ease .8s forwards}
+.splash-loader-fill{height:100%;width:0%;background:rgba(255,255,255,0.85);border-radius:2px;animation:splashLoad 2s ease-out .8s forwards}
+@keyframes splashLoad{from{width:0%}to{width:100%}}
+
+/* УСТАНОВКА */
+#installSplash{position:fixed;inset:0;z-index:3000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;gap:16px;background:rgba(10,10,10,0.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);opacity:0;transition:opacity .3s var(--e)}
+#installSplash.show{display:flex;opacity:1}
+.install-icon{font-size:80px;animation:installPulse 1s ease-in-out infinite}
+@keyframes installPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.install-title{font-size:22px;font-weight:900}
+.install-text{font-size:15px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:320px}
+.install-hint{font-size:13px;color:rgba(255,216,77,0.9);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div id="wall"></div>
+
+<div id="splash">
+  <div class="splash-icon">🟡</div>
+  <div class="splash-title">Добро пожаловать в FonarikApp!</div>
+  <div class="splash-text">Здесь ты найдёшь лучшие обои, плагины и темы для Telegram и HyperOS.</div>
+  <div class="splash-thanks">💛 Спасибо, что выбрал именно наш проект</div>
+  <div class="splash-loader"><div class="splash-loader-fill"></div></div>
+</div>
+
+<div id="installSplash">
+  <div class="install-icon">✅</div>
+  <div class="install-title">Плагин отправлен в бота</div>
+  <div class="install-text">Выйди из каталога и открой бота — там будет файл.<br>Тапни на него, чтобы установить.</div>
+  <div class="install-hint">Окно закроется через 2 секунды...</div>
+</div>
+
+<div id="header">
+  <div id="logo"><div class="dot"></div>FonarikApp</div>
+  <div class="badge">FREE</div>
+</div>
+
+<div id="searchBox">
+  <input id="search" type="text" placeholder="🔍 Поиск...">
+</div>
+
+<div id="cats"></div>
+<div id="subcats"></div>
+
+<div id="content">
+  <div class="empty">
+    <div class="big">🟡</div>
+    <div class="ttl">Загрузка...</div>
+  </div>
+</div>
+
+<div id="modal">
+  <div id="mBg"></div>
+  <div id="mSheet">
+    <div class="handle"></div>
+    <div id="mContent"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// @ts-nocheck
+const BOT_URL = "https://fonarikkapp-bot.onrender.com";
+
+try {
+  if (window.Telegram && window.Telegram.WebApp) {
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.expand();
+  }
+} catch(e) {}
+
+const $ = s => document.querySelector(s);
+let DATA = { themes: [], wallpapers: [], plugins: [] };
+let MAIN_CAT = "all";
+let SUB_CAT = "all";
+let QUERY = "";
+
+const COLORS = {
+  red:    { n: "🔴 Красные" },
+  black:  { n: "⚫ Чёрные" },
+  blue:   { n: "🔵 Синие" },
+  green:  { n: "🟢 Зелёные" },
+  white:  { n: "⚪ Белые" },
+  purple: { n: "🟣 Фиолетовые" },
+  yellow: { n: "🟡 Жёлтые" },
+  orange: { n: "🟠 Оранжевые" },
+  gradient:{ n: "🌈 Градиент" },
+  dark:   { n: "🌑 Тёмные" },
+  light:  { n: "☀️ Светлые" },
+};
+
+function toast(m){
+  const t = $("#toast");
+  t.textContent = m;
+  t.classList.add("show");
+  clearTimeout(window._tt);
+  window._tt = setTimeout(()=>t.classList.remove("show"), 1600);
+}
+
+document.addEventListener("pointerdown", e => {
+  const btn = e.target.closest(".btn");
+  if (!btn) return;
+  const r = btn.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  const span = document.createElement("span");
+  span.className = "ripple";
+  const size = Math.max(r.width, r.height);
+  span.style.width = span.style.height = size + "px";
+  span.style.left = (x - size/2) + "px";
+  span.style.top = (y - size/2) + "px";
+  btn.appendChild(span);
+  setTimeout(()=>span.remove(), 600);
+});
+
+function renderCats(){
+  const cats = [
+    { k:"all",       n:"📦 Всё",     cnt: DATA.themes.length + DATA.wallpapers.length + DATA.plugins.length },
+    { k:"themes",    n:"🎨 Темы",    cnt: DATA.themes.length },
+    { k:"wallpapers",n:"🖼️ Обои",    cnt: DATA.wallpapers.length },
+    { k:"plugins",   n:"🔌 Плагины", cnt: DATA.plugins.length },
+  ];
+  $("#cats").innerHTML = cats.map(c =>
+    `<div class="cat ${MAIN_CAT===c.k?'active':''}" data-k="${c.k}">${c.n}<span class="cnt">(${c.cnt})</span></div>`
+  ).join("");
+  document.querySelectorAll("#cats .cat").forEach(el => {
+    el.onclick = () => {
+      MAIN_CAT = el.dataset.k;
+      SUB_CAT = "all";
+      renderCats();
+      renderSubCats();
+      renderList();
+    };
+  });
+}
+
+function renderSubCats(){
+  if (MAIN_CAT !== "wallpapers") {
+    $("#subcats").classList.remove("show");
+    return;
+  }
+  const counts = {};
+  DATA.wallpapers.forEach(w => {
+    const c = w.category || "other";
+    counts[c] = (counts[c] || 0) + 1;
+  });
+  const items = [{ k:"all", n:"Все цвета", cnt: DATA.wallpapers.length }];
+  Object.keys(counts).forEach(c => {
+    if (COLORS[c]) items.push({ k:c, n: COLORS[c].n, cnt: counts[c] });
+    else items.push({ k:c, n: c, cnt: counts[c] });
+  });
+  $("#subcats").innerHTML = items.map(it =>
+    `<div class="subcat ${SUB_CAT===it.k?'active':''}" data-k="${it.k}">${it.n}<span class="cnt">(${it.cnt})</span></div>`
+  ).join("");
+  $("#subcats").classList.add("show");
+  document.querySelectorAll("#subcats .subcat").forEach(el => {
+    el.onclick = () => {
+      SUB_CAT = el.dataset.k;
+      renderSubCats();
+      renderList();
+    };
+  });
+}
+
+function renderList(){
+  const content = $("#content");
+  let items = [];
+
+  if (MAIN_CAT === "all" || MAIN_CAT === "themes") {
+    DATA.themes.forEach(t => items.push({ type:"theme", ...t }));
+  }
+  if (MAIN_CAT === "all" || MAIN_CAT === "wallpapers") {
+    DATA.wallpapers.forEach(w => {
+      if (SUB_CAT !== "all" && w.category !== SUB_CAT) return;
+      items.push({ type:"wallpaper", ...w });
+    });
+  }
+  if (MAIN_CAT === "all" || MAIN_CAT === "plugins") {
+    DATA.plugins.forEach(p => items.push({ type:"plugin", ...p }));
+  }
+
+  if (QUERY) {
+    const q = QUERY.toLowerCase();
+    items = items.filter(i =>
+      (i.name || "").toLowerCase().includes(q) ||
+      (i.desc || "").toLowerCase().includes(q)
+    );
+  }
+
+  if (!items.length) {
+    content.innerHTML = `
+      <div class="empty">
+        <div class="big">😕</div>
+        <div class="ttl">Пусто</div>
+        <div class="sub">${QUERY ? "Ничего не найдено" : "Скоро здесь появятся файлы"}</div>
+      </div>`;
+    return;
+  }
+
+  content.innerHTML = `<div class="grid">${items.map((it, i) => {
+    const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
+    const prev = it.preview ? `<img src="${it.preview}" loading="lazy" onerror="this.style.display='none'">` : ico;
+    return `<div class="card" data-i="${i}" style="animation-delay:${Math.min(i*25, 400)}ms">
+      <div class="prev">${prev}</div>
+      <div class="info">
+        <div class="name">${it.name || "Без названия"}</div>
+        <div class="sub">${it.author || it.desc || ""}</div>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+
+  document.querySelectorAll(".card").forEach(el => {
+    el.onclick = () => openItem(items[+el.dataset.i]);
+  });
+}
+
+function openItem(it){
+  const ico = it.type === "theme" ? "🎨" : it.type === "wallpaper" ? "🖼️" : "🔌";
+  const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
+  const catName = COLORS[it.category]?.n || it.category || "";
+  const isPlugin = it.type === "plugin";
+
+  $("#mContent").innerHTML = `
+    <div class="mPrev">${prev}</div>
+    <div class="mTitle">${it.name || "Без названия"}</div>
+    ${it.author ? `<div class="mRow"><span>Автор</span><span class="v">${it.author}</span></div>` : ""}
+    ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
+    ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
+    ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
+    ${isPlugin ? `<button class="btn" id="install">📥 Установить через бота</button>` : ""}
+    <button class="btn ghost" id="dl">💾 Скачать напрямую</button>
+    <button class="btn ghost" id="close">Закрыть</button>
+  `;
+
+  if (isPlugin) {
+    $("#install").onclick = () => installViaBot(it);
+  }
+
+  $("#dl").onclick = () => {
+    if (it.file) {
+      window.open(it.file, "_blank");
+      toast("Открываю файл...");
+    } else {
+      toast("Файл не указан");
+    }
+  };
+
+  $("#close").onclick = () => $("#modal").classList.remove("show");
+  $("#modal").classList.add("show");
+}
+
+/* ============ ОТПРАВКА В БОТА (HTTP) ============ */
 async function installViaBot(it){
   if (!it.file) { toast("Файл не указан"); return; }
 
   const tg = window.Telegram && window.Telegram.WebApp;
   if (!tg) { toast("Открой через Telegram"); return; }
 
-  const userId = tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+  let userId = null;
+  try {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+      userId = tg.initDataUnsafe.user.id;
+    }
+  } catch(e){}
+
   if (!userId) { toast("Не удалось получить ID"); return; }
 
   $("#modal").classList.remove("show");
@@ -13,8 +385,9 @@ async function installViaBot(it){
   sp.classList.add("show");
 
   let ok = false;
+  let errText = "";
   try {
-    const res = await fetch("https://fonarikkapp-bot.onrender.com/install", {
+    const res = await fetch(BOT_URL + "/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -26,9 +399,16 @@ async function installViaBot(it){
     });
     const data = await res.json();
     ok = data.ok === true;
-    if (!ok) console.error("Server error:", data.error);
+    if (!ok) errText = data.error || "unknown";
   } catch(e) {
-    console.error("Fetch error:", e);
+    errText = e.message;
+  }
+
+  if (!ok) {
+    sp.querySelector(".install-icon").textContent = "❌";
+    sp.querySelector(".install-title").textContent = "Ошибка отправки";
+    sp.querySelector(".install-text").innerHTML = "Не удалось отправить файл.<br>Попробуй позже.";
+    sp.querySelector(".install-hint").textContent = errText;
   }
 
   setTimeout(() => {
@@ -38,3 +418,59 @@ async function installViaBot(it){
     }, 300);
   }, 2000);
 }
+
+$("#mBg").onclick = () => $("#modal").classList.remove("show");
+
+$("#search").addEventListener("input", e => {
+  QUERY = e.target.value.trim();
+  renderList();
+});
+
+async function loadData(){
+  try {
+    const r = await fetch("data.json?t=" + Date.now());
+    if (!r.ok) throw new Error("no data");
+    DATA = await r.json();
+    if (!DATA.themes) DATA.themes = [];
+    if (!DATA.wallpapers) DATA.wallpapers = [];
+    if (!DATA.plugins) DATA.plugins = [];
+    renderCats();
+    renderSubCats();
+    renderList();
+  } catch(e) {
+    $("#content").innerHTML = `
+      <div class="empty">
+        <div class="big">🟡</div>
+        <div class="ttl">FonarikApp</div>
+        <div class="sub">Скоро здесь появится каталог</div>
+      </div>`;
+  }
+}
+
+(function initSplash(){
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+
+  let hello = "Добро пожаловать в FonarikApp!";
+  try {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+      const u = window.Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.first_name) {
+        hello = "Привет, " + u.first_name + "! Добро пожаловать!";
+      }
+    }
+  } catch(e){}
+
+  const titleEl = splash.querySelector(".splash-title");
+  if (titleEl) titleEl.textContent = hello;
+
+  setTimeout(()=>{
+    splash.classList.add("hide");
+    setTimeout(()=>splash.remove(), 700);
+  }, 2500);
+})();
+
+loadData();
+</script>
+</body>
+    </html>
