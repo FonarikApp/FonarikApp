@@ -3,228 +3,326 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#0a0e1a">
+<meta name="theme-color" content="#ffffff">
 <title>FonarikApp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
-  --glass:rgba(255,255,255,0.08);
-  --glass2:rgba(255,255,255,0.12);
-  --bd:rgba(255,255,255,0.14);
-  --bd2:rgba(255,255,255,0.22);
+  --bg:#0a0a0a;
+  --bg2:#050505;
+  --card:rgba(255,255,255,0.04);
+  --card2:rgba(255,255,255,0.07);
+  --bd:rgba(255,255,255,0.08);
+  --bd2:rgba(255,255,255,0.16);
   --tx:#fff;
-  --tx2:rgba(255,255,255,0.65);
-  --tx3:rgba(255,255,255,0.38);
-  --blur:blur(40px) saturate(180%);
+  --tx2:rgba(255,255,255,0.55);
+  --tx3:rgba(255,255,255,0.3);
+  --accent:#fff;
+  --gold:#ffd84d;
+  --blur:blur(30px) saturate(150%);
   --e:cubic-bezier(.22,1,.36,1);
   --spring:cubic-bezier(.34,1.56,.64,1);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;font-family:'Inter',-apple-system,'SF Pro Display','Segoe UI',Roboto,sans-serif}
-html,body{height:100%;overflow:hidden;background:#0a0e1a;color:var(--tx);overscroll-behavior:none;-webkit-font-smoothing:antialiased}
-body{display:flex;flex-direction:column}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;position:relative}
 
-#wall{position:fixed;inset:-10%;z-index:-2;background:
-radial-gradient(circle at 20% 20%,rgba(93,169,255,0.20) 0,transparent 45%),
-radial-gradient(circle at 80% 30%,rgba(176,127,255,0.18) 0,transparent 45%),
-radial-gradient(circle at 50% 90%,rgba(93,255,149,0.14) 0,transparent 50%),
-linear-gradient(180deg,#0a0e1a,#050810);
-animation:wd 30s ease-in-out infinite alternate;will-change:transform}
-@keyframes wd{0%{transform:scale(1.05) translate(0,0)}100%{transform:scale(1.12) translate(-2%,-1%)}}
+/* АНИМИРОВАННЫЙ ФОН */
+#bg{position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,#0a0a0a,#050505);overflow:hidden}
+#bg .orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;will-change:transform}
+#bg .orb1{width:400px;height:400px;background:#5da9ff;top:-100px;left:-100px;animation:orb1 25s ease-in-out infinite}
+#bg .orb2{width:350px;height:350px;background:#b07fff;top:40%;right:-120px;animation:orb2 30s ease-in-out infinite}
+#bg .orb3{width:450px;height:450px;background:#5dff95;bottom:-150px;left:20%;animation:orb3 35s ease-in-out infinite}
+@keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(120px,80px) scale(1.2)}}
+@keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-100px,60px) scale(.9)}}
+@keyframes orb3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-80px,-120px) scale(1.15)}}
+#bg .grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.05;pointer-events:none}
 
-#header{padding:16px 18px;display:flex;align-items:center;gap:12px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);z-index:10}
-#logo{font-size:18px;font-weight:800;letter-spacing:-.4px;display:flex;align-items:center;gap:10px}
-#logo .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#5dff95,#5da9ff);box-shadow:0 0 16px rgba(93,255,149,0.6);animation:dotPulse 2.4s ease-in-out infinite;flex-shrink:0}
-@keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-.badge{margin-left:auto;font-size:10px;font-weight:800;padding:6px 13px;border-radius:20px;background:var(--glass2);border:1px solid var(--bd2);color:var(--tx2);letter-spacing:1px}
+/* HEADER */
+#header{padding:14px 16px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.6);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);z-index:10;position:relative}
+#logo{font-size:16px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:9px;color:#fff}
+#logo .dot{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 12px rgba(255,255,255,0.9);flex-shrink:0}
+#userBadge{margin-left:auto;display:flex;align-items:center;gap:7px;padding:6px 11px;border-radius:20px;background:var(--card2);border:1px solid var(--bd2);cursor:pointer;transition:background .2s}
+#userBadge:active{background:var(--card)}
+#userBadge .lvl{font-size:11px;font-weight:900;color:#fff}
+#userBadge .ico{font-size:14px}
 
-#searchBox{padding:12px 16px;background:rgba(0,0,0,0.2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd)}
-#search{width:100%;padding:13px 18px;border-radius:16px;background:var(--glass);border:1px solid var(--bd);color:var(--tx);font-size:14px;font-weight:500;outline:none;transition:border-color .25s var(--e),background .25s}
-#search:focus{border-color:rgba(93,169,255,0.5);background:var(--glass2)}
-#search::placeholder{color:var(--tx3)}
+#searchBox{padding:10px 14px;background:rgba(0,0,0,0.4);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd)}
+#search{width:100%;padding:12px 16px;border-radius:12px;background:var(--card);border:1px solid var(--bd);color:var(--tx);font-size:14px;font-weight:500;outline:none;transition:border-color .25s var(--e),background .25s}
+#search:focus{border-color:rgba(255,255,255,0.3);background:var(--card2)}
+#search::placeholder{color:var(--tx3);font-weight:500}
 
-#cats{display:flex;gap:8px;padding:12px 14px;overflow-x:auto;background:rgba(0,0,0,0.2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
-#cats::-webkit-scrollbar{display:none}
-.cat{padding:10px 18px;border-radius:22px;background:var(--glass);border:1px solid var(--bd);font-size:13px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .2s var(--spring),background .25s,color .25s;flex-shrink:0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
-.cat:active{transform:scale(.9)}
-.cat.active{background:linear-gradient(135deg,rgba(93,169,255,0.35),rgba(176,127,255,0.3));border-color:rgba(93,169,255,0.5);color:#fff}
-.cat .cnt{opacity:.7;margin-left:5px;font-size:11px;font-weight:800}
+#tabs{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;background:rgba(0,0,0,0.4);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
+#tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 15px;border-radius:20px;background:var(--card);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .2s var(--spring),background .25s,color .25s;flex-shrink:0}
+.tab:active{transform:scale(.9)}
+.tab.active{background:#fff;color:#000;border-color:#fff;font-weight:900}
+.tab .cnt{opacity:.6;margin-left:5px;font-size:10px;font-weight:800}
+.tab.active .cnt{opacity:.5}
 
-#subcats{display:none;gap:7px;padding:9px 14px;overflow-x:auto;background:rgba(0,0,0,0.15);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
+#subcats{display:none;gap:7px;padding:9px 14px;overflow-x:auto;background:rgba(0,0,0,0.3);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);scrollbar-width:none}
 #subcats.show{display:flex}
 #subcats::-webkit-scrollbar{display:none}
-.subcat{padding:8px 15px;border-radius:18px;background:var(--glass);border:1px solid var(--bd);font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .2s var(--spring),background .25s,color .25s;flex-shrink:0}
+.subcat{padding:7px 14px;border-radius:16px;background:var(--card);border:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:transform .2s var(--spring),background .25s,color .25s;flex-shrink:0}
 .subcat:active{transform:scale(.9)}
-.subcat.active{background:var(--glass2);border-color:var(--bd2);color:#fff}
-.subcat .cnt{opacity:.6;margin-left:4px;font-size:10px;font-weight:800}
+.subcat.active{background:#fff;color:#000;border-color:#fff}
+.subcat .cnt{opacity:.6;margin-left:4px;font-size:10px}
 
-#content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#content{flex:1;overflow-y:auto;padding:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 #content::-webkit-scrollbar{display:none}
 
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 @media (min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media (min-width:900px){.grid{grid-template-columns:repeat(4,1fr)}}
 
-.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:20px;overflow:hidden;cursor:pointer;transition:transform .25s var(--spring),border-color .25s;animation:cIn .45s var(--e) backwards;contain:layout style paint;content-visibility:auto;contain-intrinsic-size:200px 300px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.15),0 8px 24px rgba(0,0,0,0.25)}
-@keyframes cIn{from{opacity:0;transform:translateY(20px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card{background:var(--card);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .25s var(--spring),border-color .25s;animation:cIn .4s var(--e) backwards;contain:layout style paint;content-visibility:auto;contain-intrinsic-size:200px 300px;position:relative}
+@keyframes cIn{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .card:active{transform:scale(.95);border-color:var(--bd2)}
-.card .prev{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden}
+.card .prev{width:100%;aspect-ratio:3/4;background:#111;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden}
 .card .prev img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s var(--e)}
-.card:active .prev img{transform:scale(1.05)}
-.card .info{padding:12px 14px;background:rgba(0,0,0,0.2);border-top:1px solid var(--bd)}
-.card .name{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card .sub{font-size:11px;color:var(--tx3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.card:active .prev img{transform:scale(1.06)}
+.card .info{padding:10px 12px;background:rgba(0,0,0,0.3);border-top:1px solid var(--bd)}
+.card .name{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.card .meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:10.5px;color:var(--tx3);font-weight:700}
+.card .meta .star{color:var(--gold)}
+.card .fav{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:15px;z-index:3;border:1px solid var(--bd);transition:transform .15s var(--spring)}
+.card .fav:active{transform:scale(.8)}
+.card .fav.on{background:rgba(255,45,85,0.85);border-color:rgba(255,45,85,1)}
 
-.empty{text-align:center;padding:70px 20px;color:var(--tx3)}
-.empty .big{font-size:72px;margin-bottom:18px}
-.empty .ttl{font-size:17px;font-weight:800;color:var(--tx)}
-.empty .sub{font-size:13px;margin-top:10px;font-weight:500}
+.empty{text-align:center;padding:60px 20px;color:var(--tx3)}
+.empty .big{font-size:60px;margin-bottom:14px;opacity:.6}
+.empty .ttl{font-size:15px;font-weight:800;color:var(--tx)}
+.empty .sub{font-size:12px;margin-top:8px;font-weight:500}
 
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--glass2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:13px 24px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s var(--e),transform .25s var(--spring);pointer-events:none;z-index:999;box-shadow:0 12px 32px rgba(0,0,0,0.5);max-width:90%;text-align:center}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(20,20,20,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:12px 22px;border-radius:99px;font-size:12.5px;font-weight:700;opacity:0;transition:opacity .25s var(--e),transform .25s var(--spring);pointer-events:none;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.6);max-width:90%;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* МОДАЛКА */
 #modal{position:fixed;inset:0;z-index:500;display:none;align-items:flex-end;justify-content:center}
 #modal.show{display:flex}
-#mBg{position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transition:opacity .3s var(--e)}
+#mBg{position:absolute;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transition:opacity .3s var(--e)}
 #modal.show #mBg{opacity:1}
-#mSheet{position:relative;width:100%;max-width:540px;background:linear-gradient(180deg,rgba(20,26,46,0.95),rgba(15,20,37,0.98));backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-bottom:none;border-radius:32px 32px 0 0;padding:22px 20px 30px;transform:translateY(100%);transition:transform .45s var(--spring);max-height:85vh;overflow-y:auto;box-shadow:0 -20px 60px rgba(0,0,0,0.6)}
+#mSheet{position:relative;width:100%;max-width:540px;background:linear-gradient(180deg,#141414,#0a0a0a);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-bottom:none;border-radius:24px 24px 0 0;padding:18px 18px 26px;transform:translateY(100%);transition:transform .45s var(--spring);max-height:88vh;overflow-y:auto;box-shadow:0 -20px 60px rgba(0,0,0,0.7)}
 #modal.show #mSheet{transform:translateY(0)}
-.handle{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,0.3);margin:0 auto 20px}
-.mTitle{font-size:22px;font-weight:900;margin-bottom:16px;text-align:center;letter-spacing:-.4px}
-.mPrev{width:100%;aspect-ratio:9/16;max-height:340px;border-radius:20px;background:linear-gradient(135deg,#1a2340,#0f1525);display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:18px;overflow:hidden}
+.handle{width:38px;height:4px;border-radius:3px;background:rgba(255,255,255,0.3);margin:0 auto 16px}
+.mTitle{font-size:19px;font-weight:900;margin-bottom:12px;text-align:center;letter-spacing:-.3px}
+.mPrev{width:100%;aspect-ratio:9/16;max-height:280px;border-radius:16px;background:#111;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:14px;overflow:hidden}
 .mPrev img{width:100%;height:100%;object-fit:contain}
-.mRow{display:flex;justify-content:space-between;gap:14px;padding:13px 15px;background:var(--glass);border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;font-size:13px;font-weight:600}
+.mRow{display:flex;justify-content:space-between;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--bd);border-radius:11px;margin-bottom:6px;font-size:12.5px;font-weight:600}
 .mRow span:first-child{color:var(--tx3);flex-shrink:0}
 .mRow .v{color:var(--tx);text-align:right;word-break:break-word;font-weight:700}
 
-.btn{width:100%;padding:17px;border-radius:18px;border:none;background:linear-gradient(135deg,#5dff95,#5da9ff);color:#0a0e1a;font-weight:900;font-size:15px;cursor:pointer;margin-top:12px;transition:transform .15s var(--spring);position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(93,169,255,0.35),inset 0 1px 0 rgba(255,255,255,0.4)}
-.btn:active{transform:scale(.96)}
-.btn.ghost{background:var(--glass);color:var(--tx);border:1px solid var(--bd2);box-shadow:none}
-.btn.ghost:active{background:var(--glass2)}
+.stars{display:flex;justify-content:center;gap:6px;padding:12px 0}
+.star{cursor:pointer;font-size:30px;transition:transform .15s var(--spring);filter:grayscale(1) opacity(.3)}
+.star:active{transform:scale(1.2)}
+.star.on{filter:none}
 
-.ripple{position:absolute;border-radius:50%;background:rgba(0,0,0,0.2);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none}
-.btn.ghost .ripple{background:rgba(255,255,255,0.25)}
+.btn{width:100%;padding:15px;border-radius:14px;border:none;background:#fff;color:#000;font-weight:900;font-size:14px;cursor:pointer;margin-top:10px;transition:transform .15s var(--spring);position:relative;overflow:hidden}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:var(--card);color:var(--tx);border:1px solid var(--bd2)}
+
+.ripple{position:absolute;border-radius:50%;background:rgba(0,0,0,0.15);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none}
+.btn.ghost .ripple{background:rgba(255,255,255,0.2)}
 @keyframes rippleAnim{to{transform:scale(4);opacity:0}}
 
-#splash{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;background:radial-gradient(circle at 30% 20%,rgba(93,169,255,0.20) 0,transparent 50%),radial-gradient(circle at 70% 80%,rgba(176,127,255,0.16) 0,transparent 50%),linear-gradient(180deg,#0a0e1a,#050810);transition:opacity .6s ease,transform .6s ease}
+/* SPLASH */
+#splash{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;background:linear-gradient(180deg,#0a0a0a,#050505);transition:opacity .6s ease,transform .6s ease}
 #splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
-.splash-icon{font-size:0;margin-bottom:30px;position:relative;width:96px;height:96px;border-radius:28px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;animation:splashFloat 3s ease-in-out infinite;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 20px 50px rgba(0,0,0,0.5),0 0 40px rgba(93,169,255,0.3)}
-.splash-icon::before{content:'🟡';font-size:48px;filter:drop-shadow(0 0 20px rgba(255,216,77,0.6))}
-.splash-icon::after{content:'';position:absolute;inset:-8px;border-radius:36px;border:1px solid rgba(255,255,255,0.15);animation:ringPulse 2s ease-in-out infinite}
-@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.08);opacity:0}}
+.splash-icon{width:80px;height:80px;border-radius:24px;background:rgba(255,255,255,0.06);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:splashFloat 3s ease-in-out infinite;position:relative}
+.splash-icon::before{content:'🟡';font-size:42px;filter:drop-shadow(0 0 20px rgba(255,216,77,0.6))}
 @keyframes splashFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
-.splash-title{font-size:24px;font-weight:900;letter-spacing:-.6px;margin-bottom:14px;line-height:1.35;background:linear-gradient(135deg,#5dff95,#5da9ff,#b07fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:fadeUp .6s ease .2s forwards;max-width:340px}
-.splash-text{font-size:14px;font-weight:500;color:rgba(255,255,255,0.7);line-height:1.6;max-width:340px;opacity:0;animation:fadeUp .6s ease .4s forwards}
-.splash-thanks{margin-top:22px;font-size:13px;font-weight:700;color:rgba(93,255,149,0.9);opacity:0;animation:fadeUp .6s ease .6s forwards}
-.splash-loader{margin-top:38px;width:64px;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;opacity:0;animation:fadeUp .6s ease .8s forwards}
-.splash-loader-fill{height:100%;width:0%;background:linear-gradient(90deg,#5dff95,#5da9ff,#b07fff);border-radius:2px;animation:splashLoad 2s ease-out .8s forwards}
+.splash-title{font-size:22px;font-weight:900;letter-spacing:-.4px;margin-bottom:12px;color:#fff;opacity:0;animation:fadeUp .6s ease .2s forwards;max-width:340px}
+.splash-text{font-size:13px;font-weight:500;color:var(--tx2);line-height:1.6;max-width:320px;opacity:0;animation:fadeUp .6s ease .4s forwards}
+.splash-thanks{margin-top:20px;font-size:12px;font-weight:700;color:var(--tx3);opacity:0;animation:fadeUp .6s ease .6s forwards}
+.splash-loader{margin-top:34px;width:60px;height:3px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;opacity:0;animation:fadeUp .6s ease .8s forwards}
+.splash-loader-fill{height:100%;width:0%;background:#fff;border-radius:2px;animation:splashLoad 2s ease-out .8s forwards}
 @keyframes splashLoad{from{width:0%}to{width:100%}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-#installSplash{position:fixed;inset:0;z-index:3000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;gap:18px;background:rgba(10,14,26,0.97);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);opacity:0;transition:opacity .3s var(--e)}
-#installSplash.show{display:flex;opacity:1}
-.install-icon{font-size:0;position:relative;width:96px;height:96px;border-radius:28px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;animation:installPulse 1s ease-in-out infinite;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 0 40px rgba(93,255,149,0.4)}
-.install-icon::before{content:'✓';font-size:44px;font-weight:900;color:#5dff95;line-height:1}
-@keyframes installPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-.install-title{font-size:22px;font-weight:900;letter-spacing:-.4px}
-.install-text{font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:320px;font-weight:500}
-.install-hint{font-size:12px;color:rgba(93,255,149,0.9);margin-top:8px;font-weight:700}
-
-/* ЗНАКОМСТВО */
-#nameScreen{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 30% 20%,rgba(93,169,255,0.25) 0,transparent 50%),radial-gradient(circle at 70% 80%,rgba(176,127,255,0.20) 0,transparent 50%),linear-gradient(180deg,#0a0e1a,#050810);opacity:0;transition:opacity .4s ease}
-#nameScreen.show{display:flex;opacity:1}
-.nameCard{width:100%;max-width:380px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-radius:28px;padding:32px 24px 26px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 20px 60px rgba(0,0,0,0.5),0 0 40px rgba(93,169,255,0.2);animation:nameIn .5s var(--spring)}
+/* РЕГИСТРАЦИЯ */
+#regScreen{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#0a0a0a,#050505);opacity:0;transition:opacity .4s ease}
+#regScreen.show{display:flex;opacity:1}
+.regCard{width:100%;max-width:400px;background:rgba(255,255,255,0.04);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-radius:24px;padding:28px 22px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);animation:nameIn .5s var(--spring)}
 @keyframes nameIn{from{opacity:0;transform:translateY(30px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
-.nameIcon{font-size:64px;margin-bottom:16px;animation:splashFloat 2.5s ease-in-out infinite}
-.nameTitle{font-size:28px;font-weight:900;letter-spacing:-.6px;margin-bottom:8px;background:linear-gradient(135deg,#5dff95,#5da9ff,#b07fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.nameSub{font-size:15px;font-weight:500;color:var(--tx2);margin-bottom:22px}
-.nameInput{width:100%;padding:16px 18px;border-radius:16px;background:rgba(0,0,0,0.3);border:1px solid var(--bd2);color:var(--tx);font-size:16px;font-weight:600;outline:none;text-align:center;letter-spacing:.3px;transition:border-color .25s var(--e),background .25s,box-shadow .25s;font-family:'Inter',sans-serif}
-.nameInput:focus{border-color:rgba(93,169,255,0.6);background:rgba(0,0,0,0.5);box-shadow:0 0 0 4px rgba(93,169,255,0.12)}
-.nameInput::placeholder{color:var(--tx3);font-weight:500}
+.regStep{display:none}
+.regStep.active{display:block}
+.regIcon{font-size:52px;margin-bottom:14px;animation:splashFloat 2.5s ease-in-out infinite}
+.regTitle{font-size:23px;font-weight:900;letter-spacing:-.5px;margin-bottom:8px;color:#fff}
+.regSub{font-size:13px;font-weight:500;color:var(--tx2);margin-bottom:20px}
+.regInput{width:100%;padding:15px 16px;border-radius:14px;background:rgba(0,0,0,0.5);border:1px solid var(--bd2);color:var(--tx);font-size:16px;font-weight:600;outline:none;text-align:center;letter-spacing:.3px;transition:border-color .25s var(--e),background .25s;font-family:'Inter',sans-serif}
+.regInput:focus{border-color:#fff;background:rgba(0,0,0,0.7)}
+.regInput::placeholder{color:var(--tx3);font-weight:500}
+.regCounter{font-size:11px;color:var(--tx3);margin-top:6px;font-weight:600}
+.regError{font-size:12px;color:#ff5d5d;margin-top:8px;font-weight:700;display:none}
+.regError.show{display:block}
+.sliderBox{position:relative;width:100%;height:60px;border-radius:14px;background:rgba(0,0,0,0.5);border:1px solid var(--bd2);overflow:hidden;margin-top:6px;touch-action:none}
+.sliderFill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(93,255,149,0.3),rgba(93,169,255,0.3));width:0%;transition:width .05s linear}
+.sliderText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--tx3);letter-spacing:1.5px;text-transform:uppercase;pointer-events:none}
+.sliderKnob{position:absolute;top:5px;left:5px;width:50px;height:50px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;color:#000;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.5);transition:left .05s linear}
+.sliderBox.ok{border-color:#5dff95}
+.sliderBox.ok .sliderText{color:#5dff95}
 
-/* СЕКРЕТКА ОМОН */
-#userScreen{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;overflow:hidden;background:#000;animation:omgFlash .1s steps(1) infinite}
-#userScreen.show{display:flex}
-@keyframes omgFlash{0%,100%{background:#ff0000}50%{background:#ffffff}}
-.omgGlitch{position:relative;text-align:center;padding:20px;animation:omgShake .05s infinite;z-index:5}
-@keyframes omgShake{0%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}100%{transform:translate(2px,3px)}}
-.omgText{font-size:clamp(20px,6vw,36px);font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:-1px;line-height:1.2;text-shadow:3px 0 #ff0000,-3px 0 #00ffff,0 0 20px #fff;animation:omgTextGlitch .3s infinite;max-width:90vw}
-@keyframes omgTextGlitch{0%{transform:translate(0,0);filter:none}20%{transform:translate(-4px,0);filter:hue-rotate(90deg)}40%{transform:translate(4px,0)}60%{transform:translate(-2px,2px);filter:invert(1)}80%{transform:translate(2px,-2px)}100%{transform:translate(0,0);filter:none}}
-.omgTimer{font-size:clamp(80px,25vw,180px);font-weight:900;color:#fff;line-height:1;margin:20px 0;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,4px 4px 0 #000;font-family:'Courier New',monospace;animation:omgPulse .3s ease-in-out infinite}
-@keyframes omgPulse{0%,100%{transform:scale(1);color:#fff}50%{transform:scale(1.1);color:#ffff00}}
-.omgSub{font-size:14px;font-weight:900;color:#fff;letter-spacing:4px;text-transform:uppercase;text-shadow:2px 0 #ff0000,-2px 0 #00ffff;animation:omgBlink .2s steps(1) infinite}
-@keyframes omgBlink{0%,100%{opacity:1}50%{opacity:0}}
-.omgFinal{font-size:clamp(24px,8vw,48px);font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:2px;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,0 0 100px #ff0000;animation:omgFinalPulse .5s ease-in-out infinite;display:none;position:relative;z-index:6;text-align:center}
-.omgFinal.show{display:block}
-@keyframes omgFinalPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-.omgScan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.4) 0px,rgba(0,0,0,0.4) 2px,transparent 2px,transparent 4px);pointer-events:none;z-index:3;animation:omgScanMove .5s linear infinite}
-@keyframes omgScanMove{from{transform:translateY(0)}to{transform:translateY(6px)}}
-.omgNoise{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.4;pointer-events:none;z-index:4;mix-blend-mode:overlay;animation:omgNoiseMove .1s steps(1) infinite}
-@keyframes omgNoiseMove{0%{transform:translate(0,0)}25%{transform:translate(-5px,3px)}50%{transform:translate(4px,-3px)}75%{transform:translate(-3px,-2px)}100%{transform:translate(0,0)}}
+/* ПРОФИЛЬ */
+#profileScreen{position:fixed;inset:0;z-index:2400;display:none;flex-direction:column;background:linear-gradient(180deg,#0a0a0a,#050505);overflow-y:auto}
+#profileScreen.show{display:flex}
+.profileHeader{padding:60px 20px 20px;text-align:center;background:linear-gradient(180deg,rgba(93,169,255,0.1),transparent)}
+.profileAvatar{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#5dff95,#5da9ff);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#000;margin:0 auto 14px;position:relative;box-shadow:0 10px 30px rgba(93,169,255,0.4)}
+.profileAvatar .lvlBadge{position:absolute;bottom:-6px;right:-6px;background:#ffd84d;color:#000;font-size:11px;font-weight:900;padding:4px 9px;border-radius:20px;border:3px solid #0a0a0a}
+.profileName{font-size:22px;font-weight:900;margin-bottom:4px}
+.profileLevel{font-size:13px;color:var(--tx3);font-weight:700}
+.xpBar{width:100%;max-width:320px;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;margin:14px auto 0;overflow:hidden;border:1px solid var(--bd)}
+.xpBarFill{height:100%;background:linear-gradient(90deg,#5dff95,#5da9ff);border-radius:4px;transition:width .5s var(--e)}
+.xpText{font-size:11px;color:var(--tx3);margin-top:6px;font-weight:700}
+.profileSection{padding:20px 16px}
+.profileSectionTitle{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--tx3);margin-bottom:12px;padding-left:4px}
+.achievement{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;transition:transform .15s}
+.achievement.locked{opacity:.4}
+.achievement .achIcon{font-size:26px;width:36px;text-align:center}
+.achievement .achInfo{flex:1}
+.achievement .achName{font-size:13px;font-weight:800;color:#fff}
+.achievement .achDesc{font-size:11px;color:var(--tx3);margin-top:2px;font-weight:600}
+.achievement .achBonus{font-size:10px;color:#5dff95;font-weight:800;margin-top:3px}
+.achievement.done .achBonus{color:var(--gold)}
 
-@media (prefers-reduced-motion: reduce){
-  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
-}
+.closeProfileBtn{position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;z-index:10}
+
+/* СЕКРЕТКА - ИГРА НА РЕАКЦИЮ */
+#reactionScreen{position:fixed;inset:0;z-index:9990;display:none;background:linear-gradient(180deg,#0a0a0a,#050505);overflow:hidden}
+#reactionScreen.show{display:block}
+.rHeader{position:absolute;top:0;left:0;right:0;padding:16px 18px;display:flex;align-items:center;gap:12px;z-index:10}
+.rHeader .rBack{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.rHeader .rInfo{flex:1;text-align:center;font-size:12px;font-weight:800;color:var(--tx2);letter-spacing:1px}
+.rStats{position:absolute;top:76px;left:0;right:0;display:flex;justify-content:center;gap:20px;z-index:10;padding:0 20px}
+.rStat{text-align:center}
+.rStat .val{font-size:24px;font-weight:900;color:#fff}
+.rStat .lbl{font-size:10px;font-weight:800;color:var(--tx3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.rStat.lives .val{color:#ff5d5d}
+.rArea{position:absolute;inset:0;cursor:pointer}
+.rCircle{position:absolute;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(255,255,255,0.6));box-shadow:0 0 40px rgba(255,255,255,0.8),0 0 80px rgba(93,169,255,0.5);transform:translate(-50%,-50%) scale(0);transition:transform .15s var(--spring);cursor:pointer}
+.rCircle.show{transform:translate(-50%,-50%) scale(1)}
+.rCircle.hit{background:radial-gradient(circle,#5dff95,rgba(93,255,149,0.6));box-shadow:0 0 60px rgba(93,255,149,1);transform:translate(-50%,-50%) scale(1.5);opacity:0;transition:all .3s}
+.rCenterMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:5;pointer-events:none}
+.rCenterMsg .big{font-size:48px;font-weight:900;color:#fff;margin-bottom:10px}
+.rCenterMsg .sub{font-size:14px;color:var(--tx2);font-weight:600;letter-spacing:.5px}
+.rResults{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;width:100%;padding:0 30px;display:none}
+.rResults.show{display:block}
+.rResults .rTitle{font-size:28px;font-weight:900;margin-bottom:10px}
+.rResults .rBig{font-size:64px;font-weight:900;color:#5dff95;margin-bottom:10px;text-shadow:0 0 30px rgba(93,255,149,0.6)}
+.rResults .rSub{font-size:14px;color:var(--tx2);font-weight:600;margin-bottom:22px}
+.rBtn{display:inline-block;padding:14px 30px;border-radius:14px;background:#fff;color:#000;font-weight:900;font-size:14px;cursor:pointer;margin:5px}
+.rBtn.ghost{background:var(--card);color:#fff;border:1px solid var(--bd2)}
 </style>
 </head>
 <body>
 
-<div id="wall"></div>
+<div id="bg">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="grain"></div>
+</div>
 
 <div id="splash">
   <div class="splash-icon"></div>
   <div class="splash-title">Добро пожаловать</div>
-  <div class="splash-text">FonarikApp — каталог обоев, плагинов и тем для Telegram</div>
-  <div class="splash-thanks">💛 Спасибо, что выбрал нас</div>
+  <div class="splash-text">FonarikApp — каталог обоев, плагинов и тем</div>
+  <div class="splash-thanks">Спасибо, что выбрал нас</div>
   <div class="splash-loader"><div class="splash-loader-fill"></div></div>
 </div>
 
-<div id="nameScreen">
-  <div class="nameCard">
-    <div class="nameIcon">👋</div>
-    <div class="nameTitle">Привет!</div>
-    <div class="nameSub">Как тебя зовут?</div>
-    <input id="nameInput" class="nameInput" type="text" placeholder="Твоё имя" maxlength="20" autocomplete="off">
-    <button class="btn" id="nameSave">Продолжить</button>
+<div id="regScreen">
+  <div class="regCard">
+    <div class="regStep active" id="step1">
+      <div class="regIcon">👋</div>
+      <div class="regTitle">Привет!</div>
+      <div class="regSub">Как тебя зовут?</div>
+      <input id="regName" class="regInput" type="text" placeholder="Никнейм" maxlength="10" autocomplete="off">
+      <div class="regCounter"><span id="nameCount">0</span> / 10</div>
+      <div class="regError" id="nameErr">Никнейм от 3 до 10 символов</div>
+      <button class="btn" id="nameNext">Далее</button>
+    </div>
+    <div class="regStep" id="step2">
+      <div class="regIcon">🤖</div>
+      <div class="regTitle">Проверка</div>
+      <div class="regSub">Двигай ползунок вправо</div>
+      <div class="sliderBox" id="sliderBox">
+        <div class="sliderFill" id="sliderFill"></div>
+        <div class="sliderText">СДВИНЬ →</div>
+        <div class="sliderKnob" id="sliderKnob">›</div>
+      </div>
+      <div class="regError" id="captchaErr">Сдвинь до конца</div>
+    </div>
   </div>
 </div>
 
-<div id="installSplash">
-  <div class="install-icon"></div>
-  <div class="install-title">Файл отправлен</div>
-  <div class="install-text">Открой бота — там будет файл.</div>
-  <div class="install-hint">Закрытие через 2 сек</div>
+<div id="profileScreen">
+  <div class="closeProfileBtn" id="closeProfile">✕</div>
+  <div class="profileHeader">
+    <div class="profileAvatar" id="pAvatar">?
+      <div class="lvlBadge" id="pLvlBadge">1</div>
+    </div>
+    <div class="profileName" id="pName">Гость</div>
+    <div class="profileLevel" id="pLevel">Уровень 1 · 0 XP</div>
+    <div class="xpBar"><div class="xpBarFill" id="pXpFill"></div></div>
+    <div class="xpText" id="pXpText">0 / 100 XP</div>
+  </div>
+  <div class="profileSection">
+    <div class="profileSectionTitle">Достижения</div>
+    <div id="achievementsList"></div>
+  </div>
 </div>
 
-<div id="userScreen">
-  <div class="omgGlitch" id="omgGlitch">
-    <div class="omgText" id="omgText">ЧЕРЕЗ 10 СЕКУНД К ТЕБЕ ПРИЕДЕТ ОМОН</div>
-    <div class="omgTimer" id="omgTimer">10</div>
-    <div class="omgSub">НЕ ДВИГАЙСЯ · ЛИЦО В КАМЕРУ</div>
+<div id="reactionScreen">
+  <div class="rHeader">
+    <div class="rBack" id="rBack">✕</div>
+    <div class="rInfo" id="rInfo">РАУНД 1 / 5</div>
+    <div style="width:40px"></div>
   </div>
-  <div class="omgFinal" id="omgFinal">Я БЕЗ ПРИКОЛА</div>
-  <div class="omgScan"></div>
-  <div class="omgNoise"></div>
+  <div class="rStats">
+    <div class="rStat"><div class="val" id="rScore">0</div><div class="lbl">Попаданий</div></div>
+    <div class="rStat lives"><div class="val" id="rLives">3</div><div class="lbl">Жизни</div></div>
+  </div>
+  <div class="rArea" id="rArea"></div>
+  <div class="rCenterMsg" id="rStart">
+    <div class="big">ТАПАЙ</div>
+    <div class="sub">Появляется круг — успей тапнуть</div>
+    <div style="margin-top:22px">
+      <div class="rBtn" id="rStartBtn">Начать</div>
+    </div>
+  </div>
+  <div class="rResults" id="rResults">
+    <div class="rTitle" id="rResultTitle">Готово</div>
+    <div class="rBig" id="rResultBig">0 мс</div>
+    <div class="rSub" id="rResultSub">Средняя реакция</div>
+    <div>
+      <div class="rBtn" id="rPlayAgain">Заново</div>
+      <div class="rBtn ghost" id="rClose">Закрыть</div>
+    </div>
+  </div>
 </div>
 
 <div id="header">
   <div id="logo"><div class="dot"></div><span>FonarikApp</span></div>
-  <div class="badge">FREE</div>
+  <div id="userBadge">
+    <span class="ico">⭐</span>
+    <span class="lvl" id="hLvl">1</span>
+  </div>
 </div>
 
 <div id="searchBox">
-  <input id="search" type="text" placeholder="🔍 Поиск...">
+  <input id="search" type="text" placeholder="Поиск">
 </div>
 
-<div id="cats"></div>
+<div id="tabs"></div>
 <div id="subcats"></div>
 
 <div id="content">
   <div class="empty">
     <div class="big">⏳</div>
-    <div class="ttl">Загрузка...</div>
+    <div class="ttl">Загрузка</div>
     <div class="sub">Подожди пару секунд</div>
   </div>
 </div>
@@ -243,12 +341,13 @@ animation:wd 30s ease-in-out infinite alternate;will-change:transform}
 // @ts-nocheck
 const BOT_URL = "https://fonarikkapp-bot.onrender.com";
 
+/* TELEGRAM INIT */
 try {
   if (window.Telegram && window.Telegram.WebApp) {
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
     if (window.Telegram.WebApp.setHeaderColor) {
-      try { window.Telegram.WebApp.setHeaderColor("#0a0e1a"); } catch(e){}
+      try { window.Telegram.WebApp.setHeaderColor("#0a0a0a"); } catch(e){}
     }
   }
 } catch(e) {}
@@ -259,13 +358,35 @@ let MAIN_CAT = "all";
 let SUB_CAT = "all";
 let QUERY = "";
 let USER_ID = null;
-let USER_NAME = null;
+
+/* USER STATE */
+const STORAGE = {
+  name: "fonarik_name",
+  favs: "fonarik_favs",
+  ratings: "fonarik_ratings",
+  xp: "fonarik_xp",
+  lvl: "fonarik_lvl",
+  achievements: "fonarik_ach",
+  stats: "fonarik_stats",
+  reactionBest: "fonarik_reaction_best"
+};
+
+function getStore(k, def){
+  try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; }
+}
+function setStore(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+let favs = getStore(STORAGE.favs, []);
+let ratings = getStore(STORAGE.ratings, {});
+let xp = getStore(STORAGE.xp, 0);
+let level = getStore(STORAGE.lvl, 1);
+let unlockedAch = getStore(STORAGE.achievements, []);
+let userStats = getStore(STORAGE.stats, { downloads: 0, ratings: 0, days: [] });
 
 try {
   if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
     const u = window.Telegram.WebApp.initDataUnsafe.user;
     if (u && u.id) USER_ID = u.id;
-    if (u && u.first_name) USER_NAME = u.first_name;
   }
 } catch(e) {}
 
@@ -275,15 +396,81 @@ const COLORS = {
   dark:{n:"Тёмные"},light:{n:"Светлые"}
 };
 
-let toastTimer = null;
+/* LEVELS */
+const LEVEL_XP = [0,100,250,450,700,1000,1400,1900,2500,3200,4000,5000,6200,7600,9200,11000,13000,15300,17900,20800,24000];
+function levelFromXp(x){
+  for (let i = LEVEL_XP.length - 1; i >= 0; i--) {
+    if (x >= LEVEL_XP[i]) return i + 1;
+  }
+  return 1;
+}
+function xpForNext(lvl){
+  if (lvl >= 20) return LEVEL_XP[19];
+  return LEVEL_XP[lvl];
+}
+function xpForCurrent(lvl){
+  return LEVEL_XP[lvl - 1] || 0;
+}
+
+/* ACHIEVEMENTS */
+const ACHIEVEMENTS = [
+  { id:"reg",     icon:"🌱", name:"Новичок",           desc:"Зарегистрировался",           bonus:"+50 XP",  need:(s)=>true,      xp:50 },
+  { id:"dl1",     icon:"🔍", name:"Первый скачал",     desc:"Скачал 1 файл",               bonus:"+100 XP", need:(s)=>s.downloads >= 1,  xp:100 },
+  { id:"dl5",     icon:"📥", name:"Коллекционер",      desc:"Скачал 5 файлов",             bonus:"+200 XP", need:(s)=>s.downloads >= 5,  xp:200 },
+  { id:"dl20",    icon:"📦", name:"Маньяк",            desc:"Скачал 20 файлов",            bonus:"+500 XP", need:(s)=>s.downloads >= 20, xp:500 },
+  { id:"fav1",    icon:"❤️", name:"В избранном",       desc:"Добавил 1 в избранное",       bonus:"+50 XP",  need:(s)=>favs.length >= 1,  xp:50 },
+  { id:"fav10",   icon:"💖", name:"Фанат",             desc:"10 в избранном",              bonus:"+300 XP", need:(s)=>favs.length >= 10, xp:300 },
+  { id:"rat1",    icon:"⭐", name:"Оценил",            desc:"Поставил 1 оценку",           bonus:"+50 XP",  need:(s)=>s.ratings >= 1,    xp:50 },
+  { id:"rat10",   icon:"🌟", name:"Критик",            desc:"Оценил 10 файлов",            bonus:"+300 XP", need:(s)=>s.ratings >= 10,   xp:300 },
+  { id:"reaction",icon:"⚡", name:"Снайпер",           desc:"Среднее время <300 мс",       bonus:"+200 XP", need:(s)=>s.reactionBest && s.reactionBest < 300, xp:200 },
+  { id:"lvl5",    icon:"🔥", name:"Пятый уровень",     desc:"Достиг 5 уровня",             bonus:"+300 XP", need:(s)=>level >= 5,        xp:300 },
+  { id:"lvl10",   icon:"👑", name:"Десятый уровень",   desc:"Достиг 10 уровня",            bonus:"Скидка 20% на Pro", need:(s)=>level >= 10, xp:500 },
+  { id:"lvl20",   icon:"💎", name:"Легенда",           desc:"Достиг 20 уровня",            bonus:"Pro на месяц",  need:(s)=>level >= 20, xp:2000 }
+];
+
+function addXp(amount){
+  xp += amount;
+  const newLvl = levelFromXp(xp);
+  if (newLvl > level) {
+    level = newLvl;
+    setStore(STORAGE.lvl, level);
+    setTimeout(() => toast("🎉 Уровень " + level + "!"), 300);
+  }
+  setStore(STORAGE.xp, xp);
+  updateHUD();
+  checkAchievements();
+}
+
+function checkAchievements(){
+  const s = { downloads: userStats.downloads, ratings: userStats.ratings, reactionBest: getStore(STORAGE.reactionBest, null) };
+  ACHIEVEMENTS.forEach(a => {
+    if (!unlockedAch.includes(a.id) && a.need(s)) {
+      unlockedAch.push(a.id);
+      xp += a.xp;
+      setTimeout(() => toast("🏆 " + a.name + "! +" + a.xp + " XP"), 500);
+    }
+  });
+  setStore(STORAGE.achievements, unlockedAch);
+  setStore(STORAGE.xp, xp);
+  const newLvl = levelFromXp(xp);
+  if (newLvl > level) { level = newLvl; setStore(STORAGE.lvl, level); }
+  updateHUD();
+}
+
+function updateHUD(){
+  const lvlEl = document.getElementById("hLvl");
+  if (lvlEl) lvlEl.textContent = level;
+}
+
 function toast(m){
   const t = $("#toast");
   t.textContent = m;
   t.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove("show"), 1600);
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+/* CLICK RIPPLE */
 document.addEventListener("pointerdown", e => {
   const btn = e.target.closest(".btn");
   if (!btn) return;
@@ -297,34 +484,37 @@ document.addEventListener("pointerdown", e => {
   span.style.left = (x - size/2) + "px";
   span.style.top = (y - size/2) + "px";
   btn.appendChild(span);
-  setTimeout(()=>span.remove(), 600);
+  setTimeout(() => span.remove(), 600);
 }, { passive: true });
 
-let rageClicks = 0;
-let rageClickTimer = null;
+/* RENDER */
+let rageClicksAll = 0;
+let rageTimerAll = null;
 
-function renderCats(){
-  const cats = [
-    { k:"all",       n:"📦 Всё",     cnt: DATA.themes.length + DATA.wallpapers.length + DATA.plugins.length },
-    { k:"themes",    n:"🎨 Темы",    cnt: DATA.themes.length },
-    { k:"wallpapers",n:"🖼️ Обои",    cnt: DATA.wallpapers.length },
-    { k:"plugins",   n:"🔌 Плагины", cnt: DATA.plugins.length },
+function renderTabs(){
+  const tabs = [
+    { k:"all",       n:"Всё",     cnt: DATA.themes.length + DATA.wallpapers.length + DATA.plugins.length },
+    { k:"themes",    n:"Темы",    cnt: DATA.themes.length },
+    { k:"wallpapers",n:"Обои",    cnt: DATA.wallpapers.length },
+    { k:"plugins",   n:"Плагины", cnt: DATA.plugins.length },
+    { k:"favs",      n:"❤️ Избранное", cnt: favs.length }
   ];
-  $("#cats").innerHTML = cats.map(c =>
-    `<div class="cat ${MAIN_CAT===c.k?'active':''}" data-k="${c.k}">${c.n}<span class="cnt">${c.cnt}</span></div>`
+  $("#tabs").innerHTML = tabs.map(t =>
+    `<div class="tab ${MAIN_CAT===t.k?'active':''}" data-k="${t.k}">${t.n}<span class="cnt">${t.cnt}</span></div>`
   ).join("");
-  document.querySelectorAll("#cats .cat").forEach(el => {
+  document.querySelectorAll("#tabs .tab").forEach(el => {
     el.onclick = () => {
       MAIN_CAT = el.dataset.k;
       SUB_CAT = "all";
-      renderCats();
+      renderTabs();
       renderSubCats();
       renderList();
-      if (el.dataset.k === "plugins") {
-        rageClicks++;
-        clearTimeout(rageClickTimer);
-        rageClickTimer = setTimeout(() => { rageClicks = 0; }, 1500);
-        if (rageClicks >= 3) { rageClicks = 0; triggerRage(); }
+
+      if (el.dataset.k === "all") {
+        rageClicksAll++;
+        clearTimeout(rageTimerAll);
+        rageTimerAll = setTimeout(() => { rageClicksAll = 0; }, 1500);
+        if (rageClicksAll >= 5) { rageClicksAll = 0; startReaction(); }
       }
     };
   });
@@ -358,6 +548,12 @@ function renderSubCats(){
   });
 }
 
+function getRating(id){
+  const r = ratings[id];
+  if (!r) return null;
+  return r;
+}
+
 function renderList(){
   const content = $("#content");
   let items = [];
@@ -374,6 +570,10 @@ function renderList(){
   if (MAIN_CAT === "all" || MAIN_CAT === "plugins") {
     DATA.plugins.forEach(p => items.push({ type:"plugin", ...p }));
   }
+  if (MAIN_CAT === "favs") {
+    const all = [...DATA.themes.map(t=>({type:"theme",...t})), ...DATA.wallpapers.map(w=>({type:"wallpaper",...w})), ...DATA.plugins.map(p=>({type:"plugin",...p}))];
+    items = all.filter(i => favs.includes(i.file));
+  }
 
   if (QUERY) {
     const q = QUERY.toLowerCase();
@@ -386,9 +586,9 @@ function renderList(){
   if (!items.length) {
     content.innerHTML = `
       <div class="empty">
-        <div class="big">🔍</div>
+        <div class="big">🕳️</div>
         <div class="ttl">Пусто</div>
-        <div class="sub">${QUERY ? "Ничего не найдено" : "Скоро появятся файлы"}</div>
+        <div class="sub">${QUERY ? "Ничего не найдено" : (MAIN_CAT === "favs" ? "Добавь файлы в избранное" : "Скоро появятся файлы")}</div>
       </div>`;
     return;
   }
@@ -398,11 +598,17 @@ function renderList(){
     const prev = it.preview
       ? `<img src="${it.preview}" loading="lazy" decoding="async" onerror="this.style.display='none'">`
       : ico;
-    return `<div class="card" data-i="${i}" style="animation-delay:${Math.min(i*22, 350)}ms">
+    const isFav = favs.includes(it.file);
+    const rating = getRating(it.file);
+    const ratingHtml = rating
+      ? `<span class="star">★</span> ${rating}`
+      : `<span class="star">☆</span> Нет`;
+    return `<div class="card" data-i="${i}" style="animation-delay:${Math.min(i*20, 300)}ms">
+      <div class="fav ${isFav?'on':''}" data-fav="${it.file}">${isFav?'❤️':'🤍'}</div>
       <div class="prev">${prev}</div>
       <div class="info">
         <div class="name">${it.name || "—"}</div>
-        <div class="sub">${it.author || it.desc || ""}</div>
+        <div class="meta">${ratingHtml} · ${it.author || it.desc || ""}</div>
       </div>
     </div>`;
   }).join("");
@@ -410,8 +616,32 @@ function renderList(){
   content.innerHTML = `<div class="grid">${html}</div>`;
 
   document.querySelectorAll(".card").forEach(el => {
-    el.onclick = () => openItem(items[+el.dataset.i]);
+    el.onclick = (e) => {
+      if (e.target.closest(".fav")) return;
+      openItem(items[+el.dataset.i]);
+    };
   });
+  document.querySelectorAll(".fav").forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      toggleFav(el.dataset.fav);
+    };
+  });
+}
+
+function toggleFav(file){
+  const idx = favs.indexOf(file);
+  if (idx >= 0) {
+    favs.splice(idx, 1);
+    toast("Убрано из избранного");
+  } else {
+    favs.push(file);
+    toast("Добавлено в избранное ❤️");
+    addXp(3);
+  }
+  setStore(STORAGE.favs, favs);
+  renderTabs();
+  renderList();
 }
 
 function openItem(it){
@@ -419,6 +649,12 @@ function openItem(it){
   const prev = it.preview ? `<img src="${it.preview}" onerror="this.style.display='none'">` : ico;
   const catName = COLORS[it.category]?.n || it.category || "";
   const isPlugin = it.type === "plugin";
+  const isFav = favs.includes(it.file);
+  const rating = getRating(it.file) || 0;
+
+  const starsHtml = [1,2,3,4,5].map(n =>
+    `<span class="star ${n <= rating ? 'on' : ''}" data-rate="${n}">${n <= rating ? '★' : '☆'}</span>`
+  ).join("");
 
   $("#mContent").innerHTML = `
     <div class="mPrev">${prev}</div>
@@ -427,17 +663,38 @@ function openItem(it){
     ${catName ? `<div class="mRow"><span>Категория</span><span class="v">${catName}</span></div>` : ""}
     ${it.client ? `<div class="mRow"><span>Клиент</span><span class="v">${it.client}</span></div>` : ""}
     ${it.desc ? `<div class="mRow"><span>Описание</span><span class="v">${it.desc}</span></div>` : ""}
+    <div class="mRow"><span>Оценка</span><span class="v">${rating ? rating + ' / 5' : 'Нет'}</span></div>
+    <div class="stars" id="starsBox">${starsHtml}</div>
     ${isPlugin ? `<button class="btn" id="install">📥 Установить</button>` : ""}
+    <button class="btn ghost" id="favBtn">${isFav ? "❤️ Убрать из избранного" : "🤍 В избранное"}</button>
     <button class="btn ghost" id="dl">💾 Скачать</button>
     <button class="btn ghost" id="close">Закрыть</button>
   `;
 
+  document.querySelectorAll("#starsBox .star").forEach(s => {
+    s.onclick = () => {
+      const r = +s.dataset.rate;
+      const old = ratings[it.file] || 0;
+      if (old === 0) { userStats.ratings++; setStore(STORAGE.stats, userStats); addXp(5); }
+      ratings[it.file] = r;
+      setStore(STORAGE.ratings, ratings);
+      openItem(it);
+      toast("Оценка: " + r + " ⭐");
+    };
+  });
+
   if (isPlugin) {
     $("#install").onclick = () => installViaBot(it);
   }
+  $("#favBtn").onclick = () => { toggleFav(it.file); openItem(it); };
   $("#dl").onclick = () => {
-    if (it.file) { window.open(it.file, "_blank"); toast("Открываю файл"); }
-    else toast("Файл не указан");
+    if (it.file) {
+      window.open(it.file, "_blank");
+      toast("Открываю файл");
+      userStats.downloads++;
+      setStore(STORAGE.stats, userStats);
+      addXp(10);
+    }
   };
   $("#close").onclick = () => $("#modal").classList.remove("show");
   $("#modal").classList.add("show");
@@ -448,14 +705,8 @@ async function installViaBot(it){
   if (!USER_ID) { toast("Не удалось получить ID"); return; }
 
   $("#modal").classList.remove("show");
-  const sp = document.getElementById("installSplash");
-  sp.querySelector(".install-title").textContent = "Отправляю...";
-  sp.querySelector(".install-text").innerHTML = "Файл готовится к отправке.";
-  sp.querySelector(".install-hint").textContent = "Подожди...";
-  sp.classList.add("show");
+  toast("Отправляю файл...");
 
-  let ok = false;
-  let errText = "";
   try {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 30000);
@@ -472,137 +723,289 @@ async function installViaBot(it){
     });
     clearTimeout(to);
     const data = await res.json();
-    ok = data.ok === true;
-    if (!ok) errText = data.error || "unknown";
-  } catch(e) {
-    errText = e.message;
-  }
-
-  if (ok) {
-    sp.querySelector(".install-title").textContent = "Файл отправлен";
-    sp.querySelector(".install-text").innerHTML = "Открой бота — там будет файл.";
-    sp.querySelector(".install-hint").textContent = "Закрытие через 2 сек";
-  } else {
-    sp.querySelector(".install-icon").textContent = "✕";
-    sp.querySelector(".install-title").textContent = "Ошибка";
-    sp.querySelector(".install-text").innerHTML = "Не удалось отправить.";
-    sp.querySelector(".install-hint").textContent = errText;
-  }
-
-  setTimeout(() => {
-    sp.classList.remove("show");
-    setTimeout(() => {
-      try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); } catch(e){}
-    }, 300);
-  }, 2000);
-}
-
-/* ===== ОМОН ===== */
-let omgTimerInterval = null;
-let omgVibInterval = null;
-
-function triggerRage(){
-  const screen = document.getElementById("userScreen");
-  const timerEl = document.getElementById("omgTimer");
-  const textEl = document.getElementById("omgText");
-  const finalEl = document.getElementById("omgFinal");
-  const glitchEl = document.getElementById("omgGlitch");
-  if (!screen) return;
-
-  let count = 10;
-  timerEl.textContent = count;
-  textEl.textContent = "ЧЕРЕЗ 10 СЕКУНД К ТЕБЕ ПРИЕДЕТ ОМОН";
-  finalEl.classList.remove("show");
-  glitchEl.style.display = "block";
-  screen.classList.add("show");
-
-  try { if (navigator.vibrate) navigator.vibrate([300,200,300,200,500]); } catch(e){}
-
-  clearInterval(omgVibInterval);
-  omgVibInterval = setInterval(() => {
-    try { if (navigator.vibrate) navigator.vibrate([200,100,200]); } catch(e){}
-  }, 500);
-
-  clearInterval(omgTimerInterval);
-  omgTimerInterval = setInterval(() => {
-    count--;
-    if (count >= 1) {
-      timerEl.textContent = count;
-    } else if (count === 0) {
-      glitchEl.style.display = "none";
-      finalEl.classList.add("show");
-      try { if (navigator.vibrate) navigator.vibrate([500,200,500,200,800]); } catch(e){}
-    } else if (count <= -3) {
-      clearInterval(omgTimerInterval);
-      clearInterval(omgVibInterval);
-      screen.classList.remove("show");
-      finalEl.classList.remove("show");
-      glitchEl.style.display = "block";
-      MAIN_CAT = "all";
-      SUB_CAT = "all";
-      renderCats();
-      renderSubCats();
-      renderList();
+    if (data.ok) {
+      toast("✅ Файл отправлен в бота");
+      userStats.downloads++;
+      setStore(STORAGE.stats, userStats);
+      addXp(10);
+      setTimeout(() => { try { window.Telegram.WebApp.close(); } catch(e){} }, 1500);
+    } else {
+      toast("❌ Ошибка отправки");
     }
-  }, 1000);
+  } catch(e) {
+    toast("❌ Ошибка: " + e.message);
+  }
 }
 
-/* ===== ЗНАКОМСТВО ===== */
-function initNameScreen(){
-  const screen = document.getElementById("nameScreen");
-  const input = document.getElementById("nameInput");
-  const save = document.getElementById("nameSave");
-  if (!screen || !input || !save) return;
+/* ИГРА НА РЕАКЦИЮ */
+let reactionState = null;
 
-  let savedName = null;
-  try { savedName = localStorage.getItem("fonarikapp_name"); } catch(e){}
+function startReaction(){
+  const scr = document.getElementById("reactionScreen");
+  scr.classList.add("show");
+  document.getElementById("rStart").style.display = "block";
+  document.getElementById("rResults").classList.remove("show");
+  document.getElementById("rScore").textContent = "0";
+  document.getElementById("rLives").textContent = "3";
+  document.getElementById("rInfo").textContent = "РАУНД 0 / 5";
+}
 
-  if (savedName) {
-    updateSplashName(savedName);
-    return;
+function runReactionGame(){
+  const area = document.getElementById("rArea");
+  const start = document.getElementById("rStart");
+  const results = document.getElementById("rResults");
+  start.style.display = "none";
+  results.classList.remove("show");
+
+  reactionState = { hits: 0, misses: 0, lives: 3, times: [], round: 0, maxRounds: 5, active: true };
+
+  area.querySelectorAll(".rCircle").forEach(c => c.remove());
+
+  function updateStats(){
+    document.getElementById("rScore").textContent = reactionState.hits;
+    document.getElementById("rLives").textContent = reactionState.lives;
+    document.getElementById("rInfo").textContent = "РАУНД " + reactionState.round + " / " + reactionState.maxRounds;
+  }
+  updateStats();
+
+  function nextRound(){
+    if (!reactionState.active) return;
+    if (reactionState.round >= reactionState.maxRounds) return endGame(true);
+    if (reactionState.lives <= 0) return endGame(false);
+
+    reactionState.round++;
+    updateStats();
+
+    const r = area.getBoundingClientRect();
+    const size = Math.max(70, 110 - reactionState.round * 8);
+    const margin = size / 2 + 20;
+    const x = margin + Math.random() * (r.width - margin * 2);
+    const y = margin + Math.random() * (r.height - margin * 2);
+    const lifetime = Math.max(700, 1400 - reactionState.round * 100);
+
+    const circle = document.createElement("div");
+    circle.className = "rCircle";
+    circle.style.width = size + "px";
+    circle.style.height = size + "px";
+    circle.style.left = x + "px";
+    circle.style.top = y + "px";
+    area.appendChild(circle);
+
+    requestAnimationFrame(() => circle.classList.add("show"));
+
+    let hit = false;
+    const startTime = performance.now();
+
+    circle.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      if (hit) return;
+      hit = true;
+      const t = Math.round(performance.now() - startTime);
+      reactionState.times.push(t);
+      reactionState.hits++;
+      circle.classList.add("hit");
+      setTimeout(() => circle.remove(), 300);
+      updateStats();
+      setTimeout(nextRound, 400);
+    });
+
+    setTimeout(() => {
+      if (hit) return;
+      hit = true;
+      reactionState.misses++;
+      reactionState.lives--;
+      circle.style.opacity = "0";
+      setTimeout(() => circle.remove(), 200);
+      updateStats();
+      if (reactionState.lives <= 0) return endGame(false);
+      setTimeout(nextRound, 400);
+    }, lifetime);
   }
 
-  if (USER_NAME) input.value = USER_NAME;
+  function endGame(win){
+    reactionState.active = false;
+    area.querySelectorAll(".rCircle").forEach(c => c.remove());
 
-  setTimeout(() => {
-    screen.classList.add("show");
-    setTimeout(() => input.focus(), 400);
-  }, 2600);
+    const results = document.getElementById("rResults");
+    const title = document.getElementById("rResultTitle");
+    const big = document.getElementById("rResultBig");
+    const sub = document.getElementById("rResultSub");
 
-  save.onclick = () => {
-    const name = input.value.trim();
-    if (!name) {
-      input.style.borderColor = "#ff5d5d";
-      setTimeout(() => { input.style.borderColor = ""; }, 800);
+    if (!win) {
+      title.textContent = "Провал";
+      big.textContent = "3 промаха";
+      sub.textContent = "Секретка закрыта";
+      results.classList.add("show");
+      setTimeout(() => {
+        document.getElementById("reactionScreen").classList.remove("show");
+      }, 2500);
       return;
     }
-    try { localStorage.setItem("fonarikkapp_name", name); } catch(e){}
-    screen.classList.remove("show");
-    updateSplashName(name);
-    setTimeout(() => toast("Привет, " + name + "! 👋"), 400);
+
+    const avg = Math.round(reactionState.times.reduce((a,b)=>a+b,0) / reactionState.times.length);
+    const best = getStore(STORAGE.reactionBest, null);
+    let recordTxt = "";
+    if (best === null || avg < best) {
+      setStore(STORAGE.reactionBest, avg);
+      recordTxt = " 🏆 Новый рекорд!";
+    }
+
+    title.textContent = "Готово";
+    big.textContent = avg + " мс";
+    sub.textContent = "Средняя реакция" + recordTxt;
+    results.classList.add("show");
+
+    let bonusXp = 5;
+    if (avg < 200) bonusXp = 100;
+    else if (avg < 300) bonusXp = 50;
+    else if (avg < 400) bonusXp = 20;
+    addXp(bonusXp);
+    setTimeout(() => toast("+" + bonusXp + " XP за реакцию"), 400);
+  }
+
+  document.getElementById("rPlayAgain").onclick = () => runReactionGame();
+  document.getElementById("rClose").onclick = () => {
+    document.getElementById("reactionScreen").classList.remove("show");
   };
 
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") save.click();
+  nextRound();
+}
+
+document.getElementById("rStartBtn").onclick = runReactionGame;
+document.getElementById("rBack").onclick = () => {
+  if (reactionState) reactionState.active = false;
+  document.getElementById("reactionScreen").classList.remove("show");
+};
+
+/* ПРОФИЛЬ */
+function openProfile(){
+  const scr = document.getElementById("profileScreen");
+  scr.classList.add("show");
+
+  const name = getStore(STORAGE.name, "Гость");
+  document.getElementById("pName").textContent = name;
+  document.getElementById("pAvatar").textContent = name.charAt(0).toUpperCase();
+  document.getElementById("pLvlBadge").textContent = level;
+  document.getElementById("pLevel").textContent = "Уровень " + level + " · " + xp + " XP";
+
+  const cur = xpForCurrent(level);
+  const next = xpForNext(level);
+  const pct = level >= 20 ? 100 : Math.min(100, ((xp - cur) / (next - cur)) * 100);
+  document.getElementById("pXpFill").style.width = pct + "%";
+  document.getElementById("pXpText").textContent = level >= 20 ? "МАКСИМУМ" : xp + " / " + next + " XP";
+
+  const s = { downloads: userStats.downloads, ratings: userStats.ratings, reactionBest: getStore(STORAGE.reactionBest, null) };
+  document.getElementById("achievementsList").innerHTML = ACHIEVEMENTS.map(a => {
+    const done = unlockedAch.includes(a.id);
+    return `<div class="achievement ${done?'done':'locked'}">
+      <div class="achIcon">${done?a.icon:'🔒'}</div>
+      <div class="achInfo">
+        <div class="achName">${a.name}</div>
+        <div class="achDesc">${a.desc}</div>
+        <div class="achBonus">${done?'✅ '+a.bonus:'🔒 '+a.bonus}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("closeProfile").onclick = () => {
+  document.getElementById("profileScreen").classList.remove("show");
+};
+document.getElementById("userBadge").onclick = openProfile;
+
+/* РЕГИСТРАЦИЯ */
+function initRegistration(){
+  const regScreen = document.getElementById("regScreen");
+  const savedName = getStore(STORAGE.name, null);
+
+  if (savedName) return;
+
+  setTimeout(() => {
+    regScreen.classList.add("show");
+  }, 2600);
+
+  let tempName = "";
+
+  const nameInput = document.getElementById("regName");
+  const nameCount = document.getElementById("nameCount");
+  const nameErr = document.getElementById("nameErr");
+  const nameNext = document.getElementById("nameNext");
+
+  nameInput.addEventListener("input", () => {
+    tempName = nameInput.value;
+    nameCount.textContent = tempName.length;
+    nameErr.classList.remove("show");
   });
+
+  nameNext.onclick = () => {
+    tempName = nameInput.value.trim();
+    if (tempName.length < 3 || tempName.length > 10) {
+      nameErr.classList.add("show");
+      nameErr.textContent = "Никнейм от 3 до 10 символов";
+      return;
+    }
+    setStore(STORAGE.name, tempName);
+    document.getElementById("step1").classList.remove("active");
+    document.getElementById("step2").classList.add("active");
+    initCaptcha();
+  };
+
+  function initCaptcha(){
+    const box = document.getElementById("sliderBox");
+    const fill = document.getElementById("sliderFill");
+    const knob = document.getElementById("sliderKnob");
+    const err = document.getElementById("captchaErr");
+    let dragging = false;
+    let startX = 0;
+    let currentX = 0;
+    const maxX = box.offsetWidth - 60;
+
+    function setProgress(x){
+      currentX = Math.max(0, Math.min(maxX, x));
+      knob.style.left = (5 + currentX) + "px";
+      fill.style.width = ((currentX / maxX) * 100) + "%";
+      if (currentX >= maxX - 3) {
+        box.classList.add("ok");
+        err.classList.remove("show");
+        setTimeout(finishReg, 400);
+      }
+    }
+
+    knob.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      dragging = true;
+      startX = e.clientX - currentX;
+      knob.setPointerCapture(e.pointerId);
+    });
+    knob.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      setProgress(e.clientX - startX);
+    });
+    knob.addEventListener("pointerup", () => {
+      dragging = false;
+      if (currentX < maxX - 3) {
+        setProgress(0);
+        err.classList.add("show");
+      }
+    });
+    knob.addEventListener("pointercancel", () => {
+      dragging = false;
+      if (currentX < maxX - 3) setProgress(0);
+    });
+
+    function finishReg(){
+      setTimeout(() => {
+        regScreen.classList.remove("show");
+        userStats.days.push(new Date().toDateString());
+        setStore(STORAGE.stats, userStats);
+        addXp(50);
+        toast("Добро пожаловать, " + tempName + "!");
+      }, 300);
+    }
+  }
 }
 
-function updateSplashName(name){
-  const t = document.querySelector(".splash-title");
-  if (t) t.textContent = "Привет, " + name + "!";
-}
-
-$("#mBg").onclick = () => $("#modal").classList.remove("show");
-
-let searchTimer = null;
-$("#search").addEventListener("input", e => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    QUERY = e.target.value.trim();
-    renderList();
-  }, 150);
-});
-
+/* LOAD DATA */
 async function loadData(){
   const content = $("#content");
   try {
@@ -615,7 +1018,7 @@ async function loadData(){
     if (!DATA.themes) DATA.themes = [];
     if (!DATA.wallpapers) DATA.wallpapers = [];
     if (!DATA.plugins) DATA.plugins = [];
-    renderCats();
+    renderTabs();
     renderSubCats();
     renderList();
   } catch(e) {
@@ -629,23 +1032,36 @@ async function loadData(){
   }
 }
 
+$("#mBg").onclick = () => $("#modal").classList.remove("show");
+
+let searchTimer = null;
+$("#search").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    QUERY = e.target.value.trim();
+    renderList();
+  }, 150);
+});
+
+/* SPLASH */
 (function initSplash(){
   const splash = document.getElementById("splash");
   if (!splash) return;
-  let savedName = null;
-  try { savedName = localStorage.getItem("fonarikkapp_name"); } catch(e){}
+  const savedName = getStore(STORAGE.name, null);
   if (savedName) {
     const t = document.querySelector(".splash-title");
     if (t) t.textContent = "Привет, " + savedName + "!";
   }
-  setTimeout(()=>{
+  setTimeout(() => {
     splash.classList.add("hide");
-    setTimeout(()=>splash.remove(), 700);
+    setTimeout(() => splash.remove(), 700);
   }, 2500);
 })();
 
+updateHUD();
+checkAchievements();
+initRegistration();
 loadData();
-initNameScreen();
 </script>
 </body>
 </html>
