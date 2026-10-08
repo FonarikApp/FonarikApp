@@ -922,7 +922,7 @@ function initRegistration(){
 
   nameNext.onclick = () => {
     tempName = nameInput.value.trim();
-    if (tempName.length < 3 || tempName.length > 10) {
+    if (tempName.length < 3 || tempName.length > 30) {
       nameErr.classList.add("show");
       nameErr.textContent = "Никнейм от 3 до 10 символов";
       return;
