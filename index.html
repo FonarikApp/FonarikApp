@@ -132,51 +132,31 @@ animation:wd 30s ease-in-out infinite alternate;will-change:transform}
 .install-text{font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:320px;font-weight:500}
 .install-hint{font-size:12px;color:rgba(93,255,149,0.9);margin-top:8px;font-weight:700}
 
-/* ===== ОМОН ЭКРАН ===== */
-#userScreen{
-  position:fixed;inset:0;z-index:9999;
-  display:none;align-items:center;justify-content:center;
-  padding:20px;overflow:hidden;
-  background:#000;
-  animation:omgFlash .1s steps(1) infinite;
-}
+/* ЗНАКОМСТВО */
+#nameScreen{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 30% 20%,rgba(93,169,255,0.25) 0,transparent 50%),radial-gradient(circle at 70% 80%,rgba(176,127,255,0.20) 0,transparent 50%),linear-gradient(180deg,#0a0e1a,#050810);opacity:0;transition:opacity .4s ease}
+#nameScreen.show{display:flex;opacity:1}
+.nameCard{width:100%;max-width:380px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-radius:28px;padding:32px 24px 26px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 20px 60px rgba(0,0,0,0.5),0 0 40px rgba(93,169,255,0.2);animation:nameIn .5s var(--spring)}
+@keyframes nameIn{from{opacity:0;transform:translateY(30px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.nameIcon{font-size:64px;margin-bottom:16px;animation:splashFloat 2.5s ease-in-out infinite}
+.nameTitle{font-size:28px;font-weight:900;letter-spacing:-.6px;margin-bottom:8px;background:linear-gradient(135deg,#5dff95,#5da9ff,#b07fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nameSub{font-size:15px;font-weight:500;color:var(--tx2);margin-bottom:22px}
+.nameInput{width:100%;padding:16px 18px;border-radius:16px;background:rgba(0,0,0,0.3);border:1px solid var(--bd2);color:var(--tx);font-size:16px;font-weight:600;outline:none;text-align:center;letter-spacing:.3px;transition:border-color .25s var(--e),background .25s,box-shadow .25s;font-family:'Inter',sans-serif}
+.nameInput:focus{border-color:rgba(93,169,255,0.6);background:rgba(0,0,0,0.5);box-shadow:0 0 0 4px rgba(93,169,255,0.12)}
+.nameInput::placeholder{color:var(--tx3);font-weight:500}
+
+/* СЕКРЕТКА ОМОН */
+#userScreen{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;overflow:hidden;background:#000;animation:omgFlash .1s steps(1) infinite}
 #userScreen.show{display:flex}
 @keyframes omgFlash{0%,100%{background:#ff0000}50%{background:#ffffff}}
 .omgGlitch{position:relative;text-align:center;padding:20px;animation:omgShake .05s infinite;z-index:5}
 @keyframes omgShake{0%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}100%{transform:translate(2px,3px)}}
-.omgText{
-  font-size:clamp(20px,6vw,36px);
-  font-weight:900;color:#fff;text-transform:uppercase;
-  letter-spacing:-1px;line-height:1.2;
-  text-shadow:3px 0 #ff0000,-3px 0 #00ffff,0 0 20px #fff;
-  animation:omgTextGlitch .3s infinite;max-width:90vw;
-}
-@keyframes omgTextGlitch{
-  0%{transform:translate(0,0);filter:none}
-  20%{transform:translate(-4px,0);filter:hue-rotate(90deg)}
-  40%{transform:translate(4px,0)}
-  60%{transform:translate(-2px,2px);filter:invert(1)}
-  80%{transform:translate(2px,-2px)}
-  100%{transform:translate(0,0);filter:none}
-}
-.omgTimer{
-  font-size:clamp(80px,25vw,180px);font-weight:900;color:#fff;line-height:1;
-  margin:20px 0;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,4px 4px 0 #000;
-  font-family:'Courier New',monospace;animation:omgPulse .3s ease-in-out infinite;
-}
+.omgText{font-size:clamp(20px,6vw,36px);font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:-1px;line-height:1.2;text-shadow:3px 0 #ff0000,-3px 0 #00ffff,0 0 20px #fff;animation:omgTextGlitch .3s infinite;max-width:90vw}
+@keyframes omgTextGlitch{0%{transform:translate(0,0);filter:none}20%{transform:translate(-4px,0);filter:hue-rotate(90deg)}40%{transform:translate(4px,0)}60%{transform:translate(-2px,2px);filter:invert(1)}80%{transform:translate(2px,-2px)}100%{transform:translate(0,0);filter:none}}
+.omgTimer{font-size:clamp(80px,25vw,180px);font-weight:900;color:#fff;line-height:1;margin:20px 0;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,4px 4px 0 #000;font-family:'Courier New',monospace;animation:omgPulse .3s ease-in-out infinite}
 @keyframes omgPulse{0%,100%{transform:scale(1);color:#fff}50%{transform:scale(1.1);color:#ffff00}}
-.omgSub{
-  font-size:14px;font-weight:900;color:#fff;letter-spacing:4px;text-transform:uppercase;
-  text-shadow:2px 0 #ff0000,-2px 0 #00ffff;animation:omgBlink .2s steps(1) infinite;
-}
+.omgSub{font-size:14px;font-weight:900;color:#fff;letter-spacing:4px;text-transform:uppercase;text-shadow:2px 0 #ff0000,-2px 0 #00ffff;animation:omgBlink .2s steps(1) infinite}
 @keyframes omgBlink{0%,100%{opacity:1}50%{opacity:0}}
-.omgFinal{
-  font-size:clamp(24px,8vw,48px);font-weight:900;color:#fff;
-  text-transform:uppercase;letter-spacing:2px;
-  text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,0 0 100px #ff0000;
-  animation:omgFinalPulse .5s ease-in-out infinite;
-  display:none;position:relative;z-index:6;text-align:center;
-}
+.omgFinal{font-size:clamp(24px,8vw,48px);font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:2px;text-shadow:0 0 30px #ff0000,0 0 60px #ff0000,0 0 100px #ff0000;animation:omgFinalPulse .5s ease-in-out infinite;display:none;position:relative;z-index:6;text-align:center}
 .omgFinal.show{display:block}
 @keyframes omgFinalPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .omgScan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.4) 0px,rgba(0,0,0,0.4) 2px,transparent 2px,transparent 4px);pointer-events:none;z-index:3;animation:omgScanMove .5s linear infinite}
@@ -199,6 +179,16 @@ animation:wd 30s ease-in-out infinite alternate;will-change:transform}
   <div class="splash-text">FonarikApp — каталог обоев, плагинов и тем для Telegram</div>
   <div class="splash-thanks">💛 Спасибо, что выбрал нас</div>
   <div class="splash-loader"><div class="splash-loader-fill"></div></div>
+</div>
+
+<div id="nameScreen">
+  <div class="nameCard">
+    <div class="nameIcon">👋</div>
+    <div class="nameTitle">Привет!</div>
+    <div class="nameSub">Как тебя зовут?</div>
+    <input id="nameInput" class="nameInput" type="text" placeholder="Твоё имя" maxlength="20" autocomplete="off">
+    <button class="btn" id="nameSave">Продолжить</button>
+  </div>
 </div>
 
 <div id="installSplash">
@@ -269,15 +259,13 @@ let MAIN_CAT = "all";
 let SUB_CAT = "all";
 let QUERY = "";
 let USER_ID = null;
+let USER_NAME = null;
 
 try {
   if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
     const u = window.Telegram.WebApp.initDataUnsafe.user;
     if (u && u.id) USER_ID = u.id;
-    if (u && u.first_name) {
-      const t = document.querySelector(".splash-title");
-      if (t) t.textContent = "Привет, " + u.first_name + "!";
-    }
+    if (u && u.first_name) USER_NAME = u.first_name;
   }
 } catch(e) {}
 
@@ -509,7 +497,7 @@ async function installViaBot(it){
   }, 2000);
 }
 
-/* ===== ОМОН СЕКРЕТКА ===== */
+/* ===== ОМОН ===== */
 let omgTimerInterval = null;
 let omgVibInterval = null;
 
@@ -541,12 +529,10 @@ function triggerRage(){
     if (count >= 1) {
       timerEl.textContent = count;
     } else if (count === 0) {
-      // Показать финальный текст
       glitchEl.style.display = "none";
       finalEl.classList.add("show");
       try { if (navigator.vibrate) navigator.vibrate([500,200,500,200,800]); } catch(e){}
     } else if (count <= -3) {
-      // Через 3 секунды после "Я БЕЗ ПРИКОЛА" — закрыть
       clearInterval(omgTimerInterval);
       clearInterval(omgVibInterval);
       screen.classList.remove("show");
@@ -559,6 +545,51 @@ function triggerRage(){
       renderList();
     }
   }, 1000);
+}
+
+/* ===== ЗНАКОМСТВО ===== */
+function initNameScreen(){
+  const screen = document.getElementById("nameScreen");
+  const input = document.getElementById("nameInput");
+  const save = document.getElementById("nameSave");
+  if (!screen || !input || !save) return;
+
+  let savedName = null;
+  try { savedName = localStorage.getItem("fonarikapp_name"); } catch(e){}
+
+  if (savedName) {
+    updateSplashName(savedName);
+    return;
+  }
+
+  if (USER_NAME) input.value = USER_NAME;
+
+  setTimeout(() => {
+    screen.classList.add("show");
+    setTimeout(() => input.focus(), 400);
+  }, 2600);
+
+  save.onclick = () => {
+    const name = input.value.trim();
+    if (!name) {
+      input.style.borderColor = "#ff5d5d";
+      setTimeout(() => { input.style.borderColor = ""; }, 800);
+      return;
+    }
+    try { localStorage.setItem("fonarikkapp_name", name); } catch(e){}
+    screen.classList.remove("show");
+    updateSplashName(name);
+    setTimeout(() => toast("Привет, " + name + "! 👋"), 400);
+  };
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") save.click();
+  });
+}
+
+function updateSplashName(name){
+  const t = document.querySelector(".splash-title");
+  if (t) t.textContent = "Привет, " + name + "!";
 }
 
 $("#mBg").onclick = () => $("#modal").classList.remove("show");
@@ -601,6 +632,12 @@ async function loadData(){
 (function initSplash(){
   const splash = document.getElementById("splash");
   if (!splash) return;
+  let savedName = null;
+  try { savedName = localStorage.getItem("fonarikkapp_name"); } catch(e){}
+  if (savedName) {
+    const t = document.querySelector(".splash-title");
+    if (t) t.textContent = "Привет, " + savedName + "!";
+  }
   setTimeout(()=>{
     splash.classList.add("hide");
     setTimeout(()=>splash.remove(), 700);
@@ -608,6 +645,7 @@ async function loadData(){
 })();
 
 loadData();
+initNameScreen();
 </script>
 </body>
 </html>
