@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0a0a0a">
 <title>FonarikApp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +20,6 @@
   --tx:#fff;
   --tx2:rgba(255,255,255,0.55);
   --tx3:rgba(255,255,255,0.3);
-  --accent:#fff;
   --gold:#ffd84d;
   --blur:blur(30px) saturate(150%);
   --e:cubic-bezier(.22,1,.36,1);
@@ -30,7 +29,6 @@
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);overscroll-behavior:none;-webkit-font-smoothing:antialiased}
 body{display:flex;flex-direction:column;position:relative}
 
-/* АНИМИРОВАННЫЙ ФОН */
 #bg{position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,#0a0a0a,#050505);overflow:hidden}
 #bg .orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;will-change:transform}
 #bg .orb1{width:400px;height:400px;background:#5da9ff;top:-100px;left:-100px;animation:orb1 25s ease-in-out infinite}
@@ -41,7 +39,6 @@ body{display:flex;flex-direction:column;position:relative}
 @keyframes orb3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-80px,-120px) scale(1.15)}}
 #bg .grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.05;pointer-events:none}
 
-/* HEADER */
 #header{padding:14px 16px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.6);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--bd);z-index:10;position:relative}
 #logo{font-size:16px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:9px;color:#fff}
 #logo .dot{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 12px rgba(255,255,255,0.9);flex-shrink:0}
@@ -100,7 +97,6 @@ body{display:flex;flex-direction:column;position:relative}
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(20,20,20,0.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);color:#fff;padding:12px 22px;border-radius:99px;font-size:12.5px;font-weight:700;opacity:0;transition:opacity .25s var(--e),transform .25s var(--spring);pointer-events:none;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.6);max-width:90%;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* МОДАЛКА */
 #modal{position:fixed;inset:0;z-index:500;display:none;align-items:flex-end;justify-content:center}
 #modal.show{display:flex}
 #mBg{position:absolute;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transition:opacity .3s var(--e)}
@@ -128,7 +124,6 @@ body{display:flex;flex-direction:column;position:relative}
 .btn.ghost .ripple{background:rgba(255,255,255,0.2)}
 @keyframes rippleAnim{to{transform:scale(4);opacity:0}}
 
-/* SPLASH */
 #splash{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;background:linear-gradient(180deg,#0a0a0a,#050505);transition:opacity .6s ease,transform .6s ease}
 #splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
 .splash-icon{width:80px;height:80px;border-radius:24px;background:rgba(255,255,255,0.06);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:splashFloat 3s ease-in-out infinite;position:relative}
@@ -142,7 +137,6 @@ body{display:flex;flex-direction:column;position:relative}
 @keyframes splashLoad{from{width:0%}to{width:100%}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-/* РЕГИСТРАЦИЯ */
 #regScreen{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#0a0a0a,#050505);opacity:0;transition:opacity .4s ease}
 #regScreen.show{display:flex;opacity:1}
 .regCard{width:100%;max-width:400px;background:rgba(255,255,255,0.04);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--bd2);border-radius:24px;padding:28px 22px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);animation:nameIn .5s var(--spring)}
@@ -165,7 +159,6 @@ body{display:flex;flex-direction:column;position:relative}
 .sliderBox.ok{border-color:#5dff95}
 .sliderBox.ok .sliderText{color:#5dff95}
 
-/* ПРОФИЛЬ */
 #profileScreen{position:fixed;inset:0;z-index:2400;display:none;flex-direction:column;background:linear-gradient(180deg,#0a0a0a,#050505);overflow-y:auto}
 #profileScreen.show{display:flex}
 .profileHeader{padding:60px 20px 20px;text-align:center;background:linear-gradient(180deg,rgba(93,169,255,0.1),transparent)}
@@ -178,7 +171,7 @@ body{display:flex;flex-direction:column;position:relative}
 .xpText{font-size:11px;color:var(--tx3);margin-top:6px;font-weight:700}
 .profileSection{padding:20px 16px}
 .profileSectionTitle{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--tx3);margin-bottom:12px;padding-left:4px}
-.achievement{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;transition:transform .15s}
+.achievement{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--bd);border-radius:14px;margin-bottom:8px}
 .achievement.locked{opacity:.4}
 .achievement .achIcon{font-size:26px;width:36px;text-align:center}
 .achievement .achInfo{flex:1}
@@ -186,10 +179,8 @@ body{display:flex;flex-direction:column;position:relative}
 .achievement .achDesc{font-size:11px;color:var(--tx3);margin-top:2px;font-weight:600}
 .achievement .achBonus{font-size:10px;color:#5dff95;font-weight:800;margin-top:3px}
 .achievement.done .achBonus{color:var(--gold)}
-
 .closeProfileBtn{position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;z-index:10}
 
-/* СЕКРЕТКА - ИГРА НА РЕАКЦИЮ */
 #reactionScreen{position:fixed;inset:0;z-index:9990;display:none;background:linear-gradient(180deg,#0a0a0a,#050505);overflow:hidden}
 #reactionScreen.show{display:block}
 .rHeader{position:absolute;top:0;left:0;right:0;padding:16px 18px;display:flex;align-items:center;gap:12px;z-index:10}
@@ -204,12 +195,13 @@ body{display:flex;flex-direction:column;position:relative}
 .rCircle{position:absolute;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(255,255,255,0.6));box-shadow:0 0 40px rgba(255,255,255,0.8),0 0 80px rgba(93,169,255,0.5);transform:translate(-50%,-50%) scale(0);transition:transform .15s var(--spring);cursor:pointer}
 .rCircle.show{transform:translate(-50%,-50%) scale(1)}
 .rCircle.hit{background:radial-gradient(circle,#5dff95,rgba(93,255,149,0.6));box-shadow:0 0 60px rgba(93,255,149,1);transform:translate(-50%,-50%) scale(1.5);opacity:0;transition:all .3s}
-.rCenterMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:5;pointer-events:none}
+.rCenterMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:5;pointer-events:none;width:100%;padding:0 30px}
 .rCenterMsg .big{font-size:48px;font-weight:900;color:#fff;margin-bottom:10px}
 .rCenterMsg .sub{font-size:14px;color:var(--tx2);font-weight:600;letter-spacing:.5px}
+.rCenterMsg .rBtn{pointer-events:auto;display:inline-block;padding:14px 30px;border-radius:14px;background:#fff;color:#000;font-weight:900;font-size:14px;cursor:pointer;margin:20px 5px 0}
 .rResults{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;width:100%;padding:0 30px;display:none}
 .rResults.show{display:block}
-.rResults .rTitle{font-size:28px;font-weight:900;margin-bottom:10px}
+.rResults .rTitle{font-size:28px;font-weight:900;margin-bottom:10px;color:#fff}
 .rResults .rBig{font-size:64px;font-weight:900;color:#5dff95;margin-bottom:10px;text-shadow:0 0 30px rgba(93,255,149,0.6)}
 .rResults .rSub{font-size:14px;color:var(--tx2);font-weight:600;margin-bottom:22px}
 .rBtn{display:inline-block;padding:14px 30px;border-radius:14px;background:#fff;color:#000;font-weight:900;font-size:14px;cursor:pointer;margin:5px}
@@ -278,7 +270,7 @@ body{display:flex;flex-direction:column;position:relative}
 <div id="reactionScreen">
   <div class="rHeader">
     <div class="rBack" id="rBack">✕</div>
-    <div class="rInfo" id="rInfo">РАУНД 1 / 5</div>
+    <div class="rInfo" id="rInfo">РАУНД 0 / 5</div>
     <div style="width:40px"></div>
   </div>
   <div class="rStats">
@@ -289,9 +281,7 @@ body{display:flex;flex-direction:column;position:relative}
   <div class="rCenterMsg" id="rStart">
     <div class="big">ТАПАЙ</div>
     <div class="sub">Появляется круг — успей тапнуть</div>
-    <div style="margin-top:22px">
-      <div class="rBtn" id="rStartBtn">Начать</div>
-    </div>
+    <div class="rBtn" id="rStartBtn">Начать</div>
   </div>
   <div class="rResults" id="rResults">
     <div class="rTitle" id="rResultTitle">Готово</div>
@@ -341,7 +331,6 @@ body{display:flex;flex-direction:column;position:relative}
 // @ts-nocheck
 const BOT_URL = "https://fonarikkapp-bot.onrender.com";
 
-/* TELEGRAM INIT */
 try {
   if (window.Telegram && window.Telegram.WebApp) {
     window.Telegram.WebApp.ready();
@@ -359,7 +348,6 @@ let SUB_CAT = "all";
 let QUERY = "";
 let USER_ID = null;
 
-/* USER STATE */
 const STORAGE = {
   name: "fonarik_name",
   favs: "fonarik_favs",
@@ -396,7 +384,6 @@ const COLORS = {
   dark:{n:"Тёмные"},light:{n:"Светлые"}
 };
 
-/* LEVELS */
 const LEVEL_XP = [0,100,250,450,700,1000,1400,1900,2500,3200,4000,5000,6200,7600,9200,11000,13000,15300,17900,20800,24000];
 function levelFromXp(x){
   for (let i = LEVEL_XP.length - 1; i >= 0; i--) {
@@ -404,15 +391,9 @@ function levelFromXp(x){
   }
   return 1;
 }
-function xpForNext(lvl){
-  if (lvl >= 20) return LEVEL_XP[19];
-  return LEVEL_XP[lvl];
-}
-function xpForCurrent(lvl){
-  return LEVEL_XP[lvl - 1] || 0;
-}
+function xpForNext(lvl){ return lvl >= 20 ? LEVEL_XP[19] : LEVEL_XP[lvl]; }
+function xpForCurrent(lvl){ return LEVEL_XP[lvl - 1] || 0; }
 
-/* ACHIEVEMENTS */
 const ACHIEVEMENTS = [
   { id:"reg",     icon:"🌱", name:"Новичок",           desc:"Зарегистрировался",           bonus:"+50 XP",  need:(s)=>true,      xp:50 },
   { id:"dl1",     icon:"🔍", name:"Первый скачал",     desc:"Скачал 1 файл",               bonus:"+100 XP", need:(s)=>s.downloads >= 1,  xp:100 },
@@ -470,7 +451,6 @@ function toast(m){
   window._tt = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-/* CLICK RIPPLE */
 document.addEventListener("pointerdown", e => {
   const btn = e.target.closest(".btn");
   if (!btn) return;
@@ -487,7 +467,6 @@ document.addEventListener("pointerdown", e => {
   setTimeout(() => span.remove(), 600);
 }, { passive: true });
 
-/* RENDER */
 let rageClicksAll = 0;
 let rageTimerAll = null;
 
@@ -548,11 +527,7 @@ function renderSubCats(){
   });
 }
 
-function getRating(id){
-  const r = ratings[id];
-  if (!r) return null;
-  return r;
-}
+function getRating(id){ return ratings[id] || null; }
 
 function renderList(){
   const content = $("#content");
@@ -737,8 +712,14 @@ async function installViaBot(it){
   }
 }
 
-/* ИГРА НА РЕАКЦИЮ */
+/* ===== ИГРА НА РЕАКЦИЮ ===== */
 let reactionState = null;
+let rTimeouts = [];
+
+function clearRTimeouts(){
+  rTimeouts.forEach(t => clearTimeout(t));
+  rTimeouts = [];
+}
 
 function startReaction(){
   const scr = document.getElementById("reactionScreen");
@@ -756,10 +737,10 @@ function runReactionGame(){
   const results = document.getElementById("rResults");
   start.style.display = "none";
   results.classList.remove("show");
+  clearRTimeouts();
+  area.querySelectorAll(".rCircle").forEach(c => c.remove());
 
   reactionState = { hits: 0, misses: 0, lives: 3, times: [], round: 0, maxRounds: 5, active: true };
-
-  area.querySelectorAll(".rCircle").forEach(c => c.remove());
 
   function updateStats(){
     document.getElementById("rScore").textContent = reactionState.hits;
@@ -768,8 +749,50 @@ function runReactionGame(){
   }
   updateStats();
 
+  function endGame(win){
+    reactionState.active = false;
+    clearRTimeouts();
+    area.querySelectorAll(".rCircle").forEach(c => c.remove());
+
+    const results = document.getElementById("rResults");
+    const title = document.getElementById("rResultTitle");
+    const big = document.getElementById("rResultBig");
+    const sub = document.getElementById("rResultSub");
+
+    if (!win) {
+      title.textContent = "Провал";
+      big.textContent = "3 промаха";
+      sub.textContent = "Секретка закрыта";
+      results.classList.add("show");
+      rTimeouts.push(setTimeout(() => {
+        document.getElementById("reactionScreen").classList.remove("show");
+      }, 2500));
+      return;
+    }
+
+    const avg = Math.round(reactionState.times.reduce((a,b)=>a+b,0) / reactionState.times.length);
+    const best = getStore(STORAGE.reactionBest, null);
+    let recordTxt = "";
+    if (best === null || avg < best) {
+      setStore(STORAGE.reactionBest, avg);
+      recordTxt = " 🏆 Новый рекорд!";
+    }
+
+    title.textContent = "Готово";
+    big.textContent = avg + " мс";
+    sub.textContent = "Средняя реакция" + recordTxt;
+    results.classList.add("show");
+
+    let bonusXp = 5;
+    if (avg < 200) bonusXp = 100;
+    else if (avg < 300) bonusXp = 50;
+    else if (avg < 400) bonusXp = 20;
+    addXp(bonusXp);
+    rTimeouts.push(setTimeout(() => toast("+" + bonusXp + " XP за реакцию"), 400));
+  }
+
   function nextRound(){
-    if (!reactionState.active) return;
+    if (!reactionState || !reactionState.active) return;
     if (reactionState.round >= reactionState.maxRounds) return endGame(true);
     if (reactionState.lives <= 0) return endGame(false);
 
@@ -779,8 +802,8 @@ function runReactionGame(){
     const r = area.getBoundingClientRect();
     const size = Math.max(70, 110 - reactionState.round * 8);
     const margin = size / 2 + 20;
-    const x = margin + Math.random() * (r.width - margin * 2);
-    const y = margin + Math.random() * (r.height - margin * 2);
+    const x = margin + Math.random() * Math.max(10, (r.width - margin * 2));
+    const y = margin + Math.random() * Math.max(10, (r.height - margin * 2));
     const lifetime = Math.max(700, 1400 - reactionState.round * 100);
 
     const circle = document.createElement("div");
@@ -804,76 +827,37 @@ function runReactionGame(){
       reactionState.times.push(t);
       reactionState.hits++;
       circle.classList.add("hit");
-      setTimeout(() => circle.remove(), 300);
+      rTimeouts.push(setTimeout(() => circle.remove(), 300));
       updateStats();
-      setTimeout(nextRound, 400);
+      rTimeouts.push(setTimeout(nextRound, 400));
     });
 
-    setTimeout(() => {
+    rTimeouts.push(setTimeout(() => {
       if (hit) return;
       hit = true;
       reactionState.misses++;
       reactionState.lives--;
       circle.style.opacity = "0";
-      setTimeout(() => circle.remove(), 200);
+      rTimeouts.push(setTimeout(() => circle.remove(), 200));
       updateStats();
       if (reactionState.lives <= 0) return endGame(false);
-      setTimeout(nextRound, 400);
-    }, lifetime);
+      rTimeouts.push(setTimeout(nextRound, 400));
+    }, lifetime));
   }
-
-  function endGame(win){
-    reactionState.active = false;
-    area.querySelectorAll(".rCircle").forEach(c => c.remove());
-
-    const results = document.getElementById("rResults");
-    const title = document.getElementById("rResultTitle");
-    const big = document.getElementById("rResultBig");
-    const sub = document.getElementById("rResultSub");
-
-    if (!win) {
-      title.textContent = "Провал";
-      big.textContent = "3 промаха";
-      sub.textContent = "Секретка закрыта";
-      results.classList.add("show");
-      setTimeout(() => {
-        document.getElementById("reactionScreen").classList.remove("show");
-      }, 2500);
-      return;
-    }
-
-    const avg = Math.round(reactionState.times.reduce((a,b)=>a+b,0) / reactionState.times.length);
-    const best = getStore(STORAGE.reactionBest, null);
-    let recordTxt = "";
-    if (best === null || avg < best) {
-      setStore(STORAGE.reactionBest, avg);
-      recordTxt = " 🏆 Новый рекорд!";
-    }
-
-    title.textContent = "Готово";
-    big.textContent = avg + " мс";
-    sub.textContent = "Средняя реакция" + recordTxt;
-    results.classList.add("show");
-
-    let bonusXp = 5;
-    if (avg < 200) bonusXp = 100;
-    else if (avg < 300) bonusXp = 50;
-    else if (avg < 400) bonusXp = 20;
-    addXp(bonusXp);
-    setTimeout(() => toast("+" + bonusXp + " XP за реакцию"), 400);
-  }
-
-  document.getElementById("rPlayAgain").onclick = () => runReactionGame();
-  document.getElementById("rClose").onclick = () => {
-    document.getElementById("reactionScreen").classList.remove("show");
-  };
 
   nextRound();
 }
 
 document.getElementById("rStartBtn").onclick = runReactionGame;
+document.getElementById("rPlayAgain").onclick = runReactionGame;
+document.getElementById("rClose").onclick = () => {
+  if (reactionState) reactionState.active = false;
+  clearRTimeouts();
+  document.getElementById("reactionScreen").classList.remove("show");
+};
 document.getElementById("rBack").onclick = () => {
   if (reactionState) reactionState.active = false;
+  clearRTimeouts();
   document.getElementById("reactionScreen").classList.remove("show");
 };
 
@@ -894,7 +878,6 @@ function openProfile(){
   document.getElementById("pXpFill").style.width = pct + "%";
   document.getElementById("pXpText").textContent = level >= 20 ? "МАКСИМУМ" : xp + " / " + next + " XP";
 
-  const s = { downloads: userStats.downloads, ratings: userStats.ratings, reactionBest: getStore(STORAGE.reactionBest, null) };
   document.getElementById("achievementsList").innerHTML = ACHIEVEMENTS.map(a => {
     const done = unlockedAch.includes(a.id);
     return `<div class="achievement ${done?'done':'locked'}">
@@ -1043,7 +1026,6 @@ $("#search").addEventListener("input", e => {
   }, 150);
 });
 
-/* SPLASH */
 (function initSplash(){
   const splash = document.getElementById("splash");
   if (!splash) return;
